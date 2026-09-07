@@ -14,14 +14,11 @@ import numpy as np
 
 from molniya_design.constants import (
     BASELINE_ELEMENTS_DEG,
-    M1_APOGEE_ALT_KM,
-    M1_PERIGEE_ALT_KM,
     M1_PERIOD_S,
     M1_RA_KM,
     M1_RP_KM,
     M1_VA_KM_S,
     M1_VP_KM_S,
-    R_EARTH,
 )
 from molniya_design.elements import coe_to_rv, rv_to_coe
 from molniya_design.propagation import (

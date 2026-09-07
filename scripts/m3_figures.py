@@ -20,7 +20,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from molniya_design.access import access_metrics, find_access_intervals, range_az_el_series
+from molniya_design.access import find_access_intervals, range_az_el_series
 from molniya_design.constants import (
     BASELINE_ELEMENTS_DEG,
     M1_PERIOD_S,

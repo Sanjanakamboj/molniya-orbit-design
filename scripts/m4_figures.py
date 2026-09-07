@@ -18,7 +18,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from molniya_design.constants import BASELINE_ELEMENTS_DEG, SIDEREAL_DAY_S
+from molniya_design.constants import BASELINE_ELEMENTS_DEG
 from molniya_design.elements import coe_to_rv
 from molniya_design.groundtrack import (
     apogee_ground_points_j2,

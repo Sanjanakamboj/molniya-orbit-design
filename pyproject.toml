@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "molniya-design"
-version = "0.1.0"
+version = "1.0.0"
 description = "Molniya orbit design: baseline elements, ground track, and high-latitude coverage analysis"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from molniya_design.constants import BASELINE_ELEMENTS_DEG, M1_PERIOD_S, SIDEREAL_DAY_S
+from molniya_design.constants import BASELINE_ELEMENTS_DEG, SIDEREAL_DAY_S
 from molniya_design.elements import coe_to_rv, rv_to_coe
 from molniya_design.groundtrack import (
     apogee_ground_points_j2,

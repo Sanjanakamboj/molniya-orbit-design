@@ -20,12 +20,8 @@ import numpy as np
 from molniya_design.access import elevation_independent_check, range_az_el
 from molniya_design.constants import (
     BASELINE_ELEMENTS_DEG,
-    J2_EARTH,
-    M1_PERIOD_S,
     MIN_ELEVATION_DEG,
-    MU_EARTH,
     R_EARTH,
-    SIDEREAL_DAY_S,
     SITE_LAT_DEG,
     SITE_LON_DEG,
 )

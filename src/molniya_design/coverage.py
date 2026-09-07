@@ -26,7 +26,7 @@ from .access import (
     find_access_intervals,
     range_az_el_series,
 )
-from .constants import J2_EARTH, MU_EARTH, R_EARTH, SIDEREAL_DAY_S
+from .constants import J2_EARTH, MU_EARTH, R_EARTH
 from .elements import coe_to_r_array
 from .frames import eci_array_to_ecef_array
 from .j2 import SecularElements, compute_secular_rates

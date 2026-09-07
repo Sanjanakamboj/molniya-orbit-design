@@ -50,7 +50,6 @@ from .elements import coe_to_rv
 from .propagation import (
     eccentric_to_true_anomaly,
     mean_to_eccentric_anomaly,
-    true_to_mean_anomaly,
 )
 
 

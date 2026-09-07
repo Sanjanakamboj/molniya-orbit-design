@@ -21,11 +21,9 @@ from molniya_design.constants import (
     M1_VP_KM_S,
     MU_EARTH,
     R_EARTH,
-    SIDEREAL_DAY_S,
 )
 from molniya_design.elements import coe_to_rv, rv_to_coe
 from molniya_design.groundtrack import (
-    apogee_ground_points_j2,
     compute_ground_track,
     compute_ground_track_j2,
     longitude_separation_deg,
@@ -37,7 +35,7 @@ from molniya_design.j2 import (
     propagate_elements_j2_secular,
     reconstruct_eci_state,
 )
-from molniya_design.j2_cartesian import j2_acceleration, j2_eom, propagate_j2_cartesian
+from molniya_design.j2_cartesian import j2_acceleration, j2_eom
 from molniya_design.propagation import find_apsides, propagate, true_to_mean_anomaly
 from molniya_design.twobody import two_body_eom
 

@@ -21,13 +21,12 @@ from molniya_design.constants import (
     BASELINE_ELEMENTS_DEG,
     M1_PERIOD_S,
     MIN_ELEVATION_DEG,
-    R_EARTH,
     SIDEREAL_DAY_S,
     SITE_LAT_DEG,
     SITE_LON_DEG,
 )
 from molniya_design.elements import coe_to_rv
-from molniya_design.frames import EARTH_ROTATION_RATE_RAD_S, eci_to_ecef
+from molniya_design.frames import EARTH_ROTATION_RATE_RAD_S
 from molniya_design.groundtrack import apsis_ground_points, compute_ground_track, longitude_separation_deg
 
 BASE = BASELINE_ELEMENTS_DEG

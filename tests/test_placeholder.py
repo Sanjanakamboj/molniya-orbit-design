@@ -29,4 +29,5 @@ def test_package_imports():
 
 def test_version_string_present():
     assert isinstance(molniya_design.__version__, str)
-    assert molniya_design.__version__ == "0.1.0"
+    # bumped to 1.0.0 at M6 final packaging (was 0.1.0 through M1-M5)
+    assert molniya_design.__version__ == "1.0.0"

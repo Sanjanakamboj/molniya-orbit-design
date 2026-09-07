@@ -10,25 +10,20 @@ import numpy as np
 import pytest
 
 from molniya_design.access import (
-    AccessInterval,
     access_metrics_boundary_aware,
     elevation_independent_check,
     find_access_intervals,
     merge_cyclic_boundary_intervals,
     range_az_el,
-    summarize_boundary_passes,
 )
 from molniya_design.constants import (
     BASELINE_ELEMENTS_DEG,
-    M1_PERIOD_S,
     MIN_ELEVATION_DEG,
-    R_EARTH,
     SIDEREAL_DAY_S,
     SITE_LAT_DEG,
     SITE_LON_DEG,
 )
 from molniya_design.coverage import (
-    PointCoverageResult,
     build_grid,
     build_satellite_ecef_trajectory,
     point_coverage,
@@ -340,9 +335,6 @@ def test_M_worst_point_matches_direct_evaluation(elements0):
 
 def test_N_timestep_convergence(elements0):
     t_span = (0.0, 3 * 86400.0)
-    n_dt = int(round((t_span[1] - t_span[0]) / 15.0)) + 1
-    t_s_fine = np.linspace(t_span[0], t_span[1], n_dt)
-    traj_fine_src = build_satellite_ecef_trajectory(elements0, t_s_fine)
 
     fractions = []
     for dt in [120.0, 60.0, 15.0]:
@@ -417,7 +409,6 @@ def test_Q_regression_m1_m4_still_holds():
 
 
 def test_R_unit_conversions():
-    hours_per_day = 24.0
     seconds_per_hour = 3600.0
     assert SIDEREAL_DAY_S / seconds_per_hour == pytest.approx(23.9344695, abs=1e-4)
     # gap in seconds -> hours round trip

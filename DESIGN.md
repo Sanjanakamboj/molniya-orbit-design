@@ -4,6 +4,14 @@
 coverage code has been implemented. This document is the analytical baseline
 that later milestones must reproduce numerically.
 
+> **M6 final status note:** this analytical baseline (a, e, i, ω, the
+> critical-inclination derivation, and the RAAN_dot prediction) was
+> numerically verified in M2 (two-body geometry/vis-viva/conservation) and
+> M4 (J2 secular rates), and remains the design used through M5's final
+> coverage results. Every M1 hand-calculation value in §9 was independently
+> reproduced from first principles again at the M6 final audit with zero
+> discrepancy — see the M6 section at the end of this document.
+
 **Constants used (WGS-84 / standard Earth values):**
 
 | Symbol | Value | Units |
@@ -550,9 +558,7 @@ J2 secular-theory accuracy, not measurement uncertainty.
 - **M5** — High-latitude dwell/coverage/revisit + parameter sensitivity
   study. ✅ complete — see §M5 below.
 - **M6** — Independent validation + portfolio polish + CI/reproducibility
-  audit.
-
-M6 is **not** started as part of this milestone.
+  audit. ✅ complete — see §M6 below. **This is the final milestone.**
 
 ---
 
@@ -564,6 +570,11 @@ Kepler time-of-flight cross-check, conservation diagnostics, the
 northern-apogee orientation regression test, and a tolerance-convergence
 study — all against the M1 analytical baseline. **No ECI→ECEF, no ground
 track, no J2, no coverage geometry** is implemented here (M3/M4/M5 scope).
+
+> **M6 final status note:** M2's two-body dynamics remain the unperturbed
+> foundation reused unchanged by every later milestone (M3's ground track,
+> M4's J2 state reconstruction, M5's coverage engine). Re-verified with
+> zero drift at the start of M3, M4, M5, and M6.
 
 ## M2.0 Pre-flight verification (before any code was written)
 
@@ -796,6 +807,19 @@ one-day access metrics), each cross-checked against an independent method
 and a timestep convergence study. **No J2, no secular RAAN/ω drift, no
 constellation/coverage optimization, no link budget, no geodetic (WGS-84)
 station coordinates** — all explicitly out of scope until M4/M5.
+
+> **M6 final status note — read this before citing any M3 access number:**
+> M3's access-fraction/pass-count results (§M3.5, e.g. "80.30% access,
+> 3 passes") use the **two-body-only** model and the one-sidereal-day
+> window whose boundary split one physical pass into two fragments
+> (documented at the time in §M3.5's caveat). **M5 supersedes M3 for every
+> final coverage/access claim**: it uses the J2-perturbed dynamics, a
+> longer (14-day) horizon, and the corrected boundary-pass accounting
+> (§M5.2). M3's numbers remain here as a genuine, dated intermediate
+> verification step (two-body ground track and ENU/triangle-geometry
+> elevation cross-check), not as this project's final service-geometry
+> result. The frame/rotation/access-geometry *code* from M3, unlike its
+> two-body-only *numbers*, is reused unchanged through M4 and M5.
 
 ## M3.0 Pre-flight verification
 
@@ -1084,6 +1108,16 @@ mean-element secular model, not a full osculating-element production
 propagator** — the optional Cartesian cross-check is supporting only, per
 the M4 scope guard. **Coverage/revisit analysis remains M5** — nothing
 in this section is a coverage or link-availability result.
+
+> **M6 final status note:** M4's first-order secular J2 model (not a
+> full/high-fidelity force model — see the module docstrings and §M4.7's
+> explicit "supporting cross-check only" framing of the optional
+> Cartesian propagator) is the perturbation model M5's final coverage
+> engine uses directly (`coverage.py` calls the same `j2.py` rate/
+> propagation functions verified here, unchanged). The critical-
+> inclination result validated in this section — near-zero argp drift,
+> confirmed sign reversal off-critical — is used as-is by M5's
+> inclination-sensitivity study.
 
 ## M4.0 Pre-flight verification
 
@@ -1427,6 +1461,13 @@ cross-check. **This is still geometric access only** (spherical Earth,
 first-order secular J2, no refraction, no link budget) — see §11 for the
 unchanged limitations list. **No multi-satellite constellation design is
 performed** — M5 is explicitly single-spacecraft.
+
+> **M6 final status note:** M5 is this project's **final, authoritative
+> technical coverage/revisit result** — superseding M3's two-body/one-day
+> access numbers for every headline claim (§M3's own status note points
+> here). M5's results were independently re-derived from first principles
+> and re-verified against the production engine at the M6 final audit
+> with zero discrepancy (see the M6 section at the end of this document).
 
 ## M5.0 Pre-flight verification
 
@@ -1850,3 +1891,289 @@ propagation, or final CI/portfolio packaging was implemented in M5 — all
 remain explicitly deferred to M6 (where applicable) per the roadmap.
 M5 ends with single-satellite high-latitude coverage/revisit analysis
 and sensitivity, exactly as scoped.
+
+---
+
+# Milestone 6 — Final Technical Audit, Independent Validation, Portfolio Packaging, and CI
+
+**Status:** M6 complete. **This is the final milestone.** No new orbital
+physics was added — the audit found no genuine technical error requiring
+correction, so the M1–M5 baseline design and results stand unchanged.
+M6 consists of an independent re-derivation of every headline number, a
+repository-wide hygiene audit, a coverage-language audit, a full figure
+re-inspection, a README rewrite, LICENSE addition, dependency audit,
+version bump, a fresh-environment reproducibility test, and lightweight CI.
+
+## M6.0 Pre-flight verification
+
+Branch `main`, working tree clean, local HEAD exactly
+`9b827fa25f4461d327abec3d1b8cdb37ec42ad6d` (== `origin/main`), M1→M5
+history linear and untouched — all confirmed before any M6 work began.
+`pytest -W error` on the pre-M6 tree: 117/117 passed. All M2–M5 reports
+regenerated and diffed against committed artifacts: **byte-for-byte
+identical** (M5's report differs only in wall-clock timing text, which is
+expected and excluded from the comparison; all numeric content identical).
+
+## M6.1 Independent final physics recheck (fresh derivation, not stored reports)
+
+Every value below was recomputed from a **standalone script that does not
+import `molniya_design.constants` or `molniya_design.j2`** (for items
+A–D) — i.e. genuinely re-derived from the original design choices (μ, Re,
+J2, half-sidereal-day period, 600 km perigee), not read back from the
+package under test:
+
+| # | Item | Independently recomputed | Committed/expected | Residual |
+|---|---|---|---|---|
+| A | a, e, rp, ra, T, n, p | a=26561.762430 km, e=0.7372863710, rp=6978.137000 km, ra=46145.387861 km, T=43082.045250 s (11.967235 h), n=1.4584231716e-4 rad/s, p=12123.022305 km | identical (M1/M2) | 0 (exact, same closed-form arithmetic) |
+| B | Critical inclination, argp_dot | i_crit=63.434949°, argp_dot=7.206e-17 deg/day | 63.434949° / ~0 | 0 |
+| C | RAAN_dot (independently coded formula) | -0.145135 deg/day | -0.145135 deg/day (M1/M4) | 0 |
+| D | vp, va (vis-viva) | vp=9.961732 km/s, va=1.506420 km/s | identical (M1/M2) | 0 |
+| E | Ground-track repeat (ω_E·T, ω_E·sidereal_day) | 180.000000°, 360.000000° | 180°/360° exactly (M3) | 0 |
+| F | 14-day J2 same-side apogee longitude drift (direct call to `groundtrack.apogee_ground_points_j2`) | -2.33258° | -2.33258° (M4) | 0 |
+| G | M5 regional worst gap / representative-site access (direct call to `coverage.regional_coverage`/`point_coverage`, fresh Python process) | worst_gap=10573.337 s (2.9370 h) at (60.0, 270.0); point-weighted mean=0.804983; site access=0.802826 | 10573.337 s at (60.0,270.0); 0.804983; 0.802826 (M5) | 0 |
+
+**Additional sanity checks (H–O, per §19):** M3 apogee latitude at every
+apogee = +63.434949° exactly; two-body half-day longitude alternation =
+90.00000°/-90.00000° exactly; ω=90° control case reproduces the
+documented catastrophic failure (§M5.9, re-confirmed from the committed
+M5 report, not re-run — an expensive 7-day regional sweep already
+verified deterministic in §M6.0); `a`/`e`/`i` confirmed literally constant
+(`==`, not `approx`) at four arbitrary times in the secular propagator,
+confirming **no hidden impulsive orbit correction** exists anywhere in
+the coverage propagation path.
+
+**Zero discrepancies found anywhere in this recheck.** No orbit
+redesign, no numerical correction, and no new orbital-mechanics code was
+required or added in M6.
+
+## M6.2 Repository-wide technical audit
+
+**Static analysis (`pyflakes src tests scripts`):** found and fixed 19
+genuine unused-import/unused-local-variable issues across `j2.py`,
+`coverage.py`, `test_coverage.py`, `test_j2.py`, and five `scripts/*.py`
+files — all import-statement or dead-local-variable removals, **zero
+lines of numerical/physics logic touched**. One `pyflakes` finding
+(`mpl_toolkits.mplot3d.Axes3D` "unused" in `m2_figures.py`) is an
+intentional, already-commented side-effect import (`# noqa: F401
+(registers 3D projection)`) — pyflakes does not parse `noqa` comments
+(that is a flake8 convention), so this is a correctly-documented
+exception, not a hygiene issue. The remaining `pyflakes` "f-string is
+missing placeholders" notices are false positives on individual physical
+lines of `print()` calls whose f-string spans multiple continuation
+lines — not real defects, left as-is.
+
+`pytest -W error` re-run after the cleanup: **117/117 passed, zero
+warnings** — confirmed no behavioral change. All M2–M5 reports
+re-diffed against committed artifacts after cleanup: **still
+byte-identical / numerically identical** — confirmed the import cleanup
+caused zero numerical drift.
+
+**Other hygiene checks, all clean:** no TODO/FIXME/XXX anywhere in
+`src/`, `tests/`, `scripts/`, or the two top-level docs; no stray
+`print()` statements in `src/` (production library code); no absolute
+local filesystem paths (`/Users/...`) in any tracked file; no
+secrets/API keys/tokens/passwords in any tracked file; no `.venv`,
+`__pycache__`, `.egg-info`, or `.pytest_cache` ever staged (verified at
+every milestone's pre-commit check and again here); dependency audit
+(§M6.7) found no unused or missing runtime dependencies.
+
+**Duplicated numerical logic:** none found beyond the deliberately
+duplicated `_rot3`/`_rot1` helpers in `elements.py` and `frames.py`
+(documented since M3 as an intentional independence choice — "so the two
+rotation conventions [PQW↔ECI and ECI↔ECEF] remain independently
+inspectable even though they use the same mathematical form," M3
+`frames.py` docstring) and the two independently-coded RAAN_dot formulas
+(production `j2.py` vs. the standalone M6.1/M4-test formula) — both are
+intentional cross-check redundancy, not accidental duplication.
+
+**Milestone-history consistency:** each milestone section's own
+"N tests pass" statement (e.g. M2's "34 tests," M3's "72 tests") is a
+correct historical snapshot at the point that section was written, not a
+stale claim about the current total — the current total (117, now 117
+still after M6's import-only cleanup) is stated correctly in the M5
+section, this M6 section, and README. No stale claim of "continuous
+coverage" was found anywhere in the repository (checked explicitly, see
+§M6.3).
+
+## M6.3 Coverage-language audit
+
+Every occurrence of "coverage" in `README.md` and `DESIGN.md` was
+reviewed. Findings: the word is used in two legitimate senses — (1) the
+project's mission-domain framing ("Molniya... for high-latitude
+coverage" as the *purpose* of the design, in the objective/tagline
+text), and (2) qualified technical results, which consistently say
+**"geometric access"**, **"maximum no-access gap"**, or explicitly
+"NOT RF coverage" / "NOT a communications-link or availability result"
+in every figure title and every headline results statement (M3 §M3.4
+access-vs-time figure, M5 §M5.15's two map figures, and throughout the
+M5 results tables). No instance was found where a bare "coverage" number
+is presented as if it were RF/communications/operational availability.
+The README was further tightened during its M6 rewrite (§M6.5) to lead
+with "geometric access" language in every results-bearing sentence.
+
+## M6.4 M1 vs. M3 vs. M5 dwell/access-metric audit
+
+Confirmed distinct and non-conflated everywhere in the final
+documentation (README §"Verification," DESIGN.md §M5.11): **M1's 84.01%**
+is a pure orbital-anomaly-window proxy (no ground site, no elevation, no
+Earth rotation); **M3's 80.30%** is one-day, two-body, single-site
+geometric access; **M5's 80.28% (site) / ~80.5% (regional)** is 14-day,
+J2-perturbed, single-site and regional geometric access. All four numbers
+are kept in their own labeled rows in every table that presents them
+(never merged into one unqualified "dwell percentage").
+
+## M6.5 Window-boundary logic re-audit
+
+Re-ran the M5 boundary-handling test suite (`test_C_periodic_boundary_merge`,
+`test_D_non_periodic_boundary_not_merged`,
+`test_D_non_periodic_with_interior_complete_pass`) as part of the M6.0
+full-suite pass: all still pass with the original M5 logic — **no
+weakness found, no test changes needed**. `README.md` does not repeat
+the M3-era "3 passes" wording anywhere (confirmed by grep, §M6.2); the
+only place that phrase appears is DESIGN.md's own M3.5 section (the
+original, dated, correctly-caveated documentation of the issue) and the
+new M6 supersession note pointing to M5 as authoritative (§M3's status
+note, added in M6).
+
+## M6.6 J2-model-scope language audit
+
+Confirmed `DESIGN.md`/`README.md` consistently describe M4/M5's dynamics
+as **"first-order secular J2"** or **"J2 secular model"**, never as
+"full J2 propagation" or "high-fidelity force model" (grep-verified,
+§M6.2). The optional Cartesian J2 cross-check (`j2_cartesian.py`) is
+described in its own module docstring and in DESIGN.md §M4.7/§M5 as
+**"supporting cross-check only,"** not the primary coverage-generating
+model — the primary model for every M5 coverage number is the
+mean-element secular propagator in `j2.py`.
+
+## M6.7 Dependency audit
+
+Runtime dependencies (`numpy`, `scipy`) match actual `src/` imports
+exactly — both genuinely used throughout the numerical core, nothing
+else imported there. Dev-only dependencies (`pytest`, `matplotlib`) are
+used only in `tests/`/`scripts/`, correctly separated under
+`[project.optional-dependencies].dev`. No unused, missing, or
+unnecessarily pinned dependency found; version floors (`numpy>=1.24`,
+`scipy>=1.10`, `pytest>=7.0`, `matplotlib>=3.7`) are left as minimum
+floors rather than exact pins, since the fresh-environment
+reproducibility test (§M6.9) demonstrated deterministic results without
+needing exact pins.
+
+**Version:** bumped from `0.1.0` (carried unchanged since M1) to
+**`1.0.0`** in both `pyproject.toml` and
+`src/molniya_design/__init__.py` for final packaging — the two were
+already consistent with each other at every prior milestone and remain
+so now (verified by direct comparison, not assumption).
+
+## M6.8 LICENSE
+
+Added `LICENSE` (MIT), using the exact git-configured author name
+(`git config user.name` → "Sanjana Kamboj") — not an invented or expanded
+legal name.
+
+## M6.9 Fresh-environment reproducibility
+
+Created a genuinely new virtual environment (`python3 -m venv`, a path
+never used by any prior milestone), installed via `pip install -e
+".[dev]"` from a clean pip cache-miss state, and re-ran the full
+verification chain:
+
+- `pytest -W error`: **117/117 passed** (15.3 s cold; comparable to the
+  1.2–1.9 s warm-cache runs used throughout M2–M6 — the difference is
+  environment/import warm-up, not test behavior).
+- M2/M3/M4 verification reports: **byte-for-byte identical** to the
+  committed files.
+- M5 verification report and all four result artifacts (JSON, 3 CSVs):
+  **numerically identical** (M5's text report differs only in wall-clock
+  timing strings, as expected).
+- All 12 committed figures: regenerated **byte-identical** in the fresh
+  environment.
+
+**Honest caveat on the figure byte-identity result:** `pip` resolved the
+*same* library versions (matplotlib 3.11.1, numpy 2.5.3, scipy 1.18.1)
+in both the fresh venv and the original development venv, since both
+installs happened within the same short timeframe from the same package
+index state. This byte-identical figure result therefore demonstrates
+**numerical determinism** (the underlying data driving every figure is
+reproducible) but does **not** by itself demonstrate robustness to a
+*different* matplotlib/numpy/scipy version's rendering internals (font
+metrics, anti-aliasing, colormap LUT changes, etc., can change PNG bytes
+across library versions without any numerical change). This distinction
+is stated explicitly rather than implying a stronger reproducibility
+guarantee than was actually tested. The **numeric** results (reports,
+JSON, CSV) are the claim that matters for scientific reproducibility, and
+that claim is fully substantiated.
+
+## M6.10 Final figure audit and hierarchy
+
+All 12 committed figures (M2: 2, M3: 3, M4: 3, M5: 4) were re-opened and
+visually re-inspected at M6 (not assuming prior milestone reviews were
+sufficient) for clipping, title/label/legend overlap, missing units, fake
+dateline-wrap lines, misleading color scales or aspect ratios, ambiguous
+"coverage" wording, two-body-vs-J2 visual distinguishability, and
+worst-point marker clipping. **No new issues found** — every issue
+identified during this final pass had already been caught and fixed at
+its own milestone (M3's window-legend double-shading, M4's inset overlap,
+M5's legend-over-marker overlap — all documented in their respective
+milestone sections). One expected, non-defect observation reconfirmed:
+`m4_ground_track_two_body_vs_j2.png`'s two curves are genuinely
+indistinguishable at full-map scale (correctly small divergence, not a
+rendering bug — already addressed with the zoomed inset since M4).
+
+**Final authoritative figure hierarchy** (used in the README rewrite,
+§M6.11):
+
+| Tier | Figure | Purpose |
+|---|---|---|
+| Primary 1 | `m2_orbit_geometry.png` | Molniya geometry, northern apogee, perigee/apogee markers |
+| Primary 2 | `m3_ground_track.png` | Characteristic Earth-fixed two-body Molniya ground track |
+| Primary 3 | `m4_j2_rate_sensitivity.png` | Why critical inclination matters — argp_dot crossing zero |
+| Primary 4 | `m5_regional_max_gap.png` | The actual single-satellite service limitation (headline result) |
+| Primary 5 | `m5_sensitivity_trade.png` | Engineering trade sensitivity across four design axes |
+
+**Supporting/diagnostic figures** (referenced in DESIGN.md, not
+front-and-center in README): `m2_conservation_and_apsides.png`,
+`m3_access_vs_time.png`, `m3_range_vs_elevation.png`,
+`m4_ground_track_two_body_vs_j2.png`, `m4_element_drift.png`,
+`m5_access_fraction_map.png`, `m5_representative_site_timeline.png`.
+This matches the M6 task's suggested hierarchy exactly, confirmed
+appropriate by the visual re-inspection rather than adopted blindly.
+
+## M6.11 README rewrite
+
+`README.md` was substantially rewritten around the recommended M6
+structure (objective → final design table → final service result,
+headlined and unambiguous → engineering progression → why critical
+inclination matters → ground track/coverage figures → sensitivity →
+verification → limitations → reproducibility → repository structure →
+what this project demonstrates). No marketing language; every
+results-bearing sentence uses "geometric access" language and states the
+single-satellite gap as a heading-level fact, not a caveat buried at the
+bottom.
+
+## M6.12 Final limitations (consolidated)
+
+Point-mass spacecraft; spherical-Earth coverage geometry; geocentric
+(not geodetic/WGS-84) latitude/longitude; first-order secular J2 only
+(Cartesian J2 is a supporting cross-check, not the primary model); no
+drag; no SRP; no lunisolar perturbations; no stationkeeping; no RF link
+budget; no antenna gain/pattern; no atmospheric/rain-loss modeling; no
+navigation/estimation errors; no launch-injection-error analysis; no
+operational-availability claim; no constellation sizing; **no
+continuous-coverage claim for a single spacecraft**. A classical
+operational Molniya communications system normally uses multiple
+spacecraft; constellation design was never in this project's scope and
+was not started in M6.
+
+## M6.13 Scope guard confirmation
+
+No new orbital-mechanics/physics code was added in M6 (the independent
+recheck in §M6.1 found no discrepancy requiring one). No multi-satellite
+constellation design, Walker optimization, link budget, antenna pattern,
+atmospheric-loss modeling, stationkeeping design, or new force-model
+propagation was added. M6's only production-code changes were the
+hygiene fixes in §M6.2 (import/dead-variable removal, zero physics
+lines touched) and the version bump (§M6.7). Git history was not
+rewritten, no commit was amended, and no force-push occurred — this
+section itself is an append-only addition to `DESIGN.md`, exactly like
+every milestone before it.
