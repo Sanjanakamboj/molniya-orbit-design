@@ -540,9 +540,9 @@ J2 secular-theory accuracy, not measurement uncertainty.
 
 ## 12. Milestone Roadmap
 
-- **M1** — Analytical design + verification plan (this document). ✅ current
+- **M1** — Analytical design + verification plan (this document). ✅ complete
 - **M2** — Element/state conversion + two-body propagation + apsis/period
-  numerical verification (§10.A–F).
+  numerical verification (§10.A–F). ✅ complete — see §M2 below.
 - **M3** — ECI/ECEF transformation + Earth-fixed ground track + access
   geometry (§10.J, K, L, N).
 - **M4** — First-order J2 secular propagation + critical-inclination
@@ -552,4 +552,234 @@ J2 secular-theory accuracy, not measurement uncertainty.
 - **M6** — Independent validation + portfolio polish + CI/reproducibility
   audit.
 
-M2 is **not** started as part of this milestone.
+M3 is **not** started as part of this milestone.
+
+---
+
+# Milestone 2 — Element/State Conversion + Two-Body Propagation Verification
+
+**Status:** M2 complete. Implements the Cartesian two-body dynamics,
+classical-element ↔ state conversion, apsis detection, an independent
+Kepler time-of-flight cross-check, conservation diagnostics, the
+northern-apogee orientation regression test, and a tolerance-convergence
+study — all against the M1 analytical baseline. **No ECI→ECEF, no ground
+track, no J2, no coverage geometry** is implemented here (M3/M4/M5 scope).
+
+## M2.0 Pre-flight verification (before any code was written)
+
+Before implementation, M1's regression values were independently
+recomputed from the constants and design choices in DESIGN.md §0–§9 (not
+copied from the table) and matched to the reported precision:
+
+| Quantity | M1 value | Recomputed | Match |
+|---|---|---|---|
+| a | 26561.762 km | 26561.762 km | ✓ |
+| e | 0.737286 | 0.737286 | ✓ |
+| i | 63.4349° | 63.4349° | ✓ |
+| perigee altitude | 600 km | 600.000 km | ✓ |
+| apogee altitude | 39767.251 km | 39767.251 km | ✓ |
+| period | 11.967235 h | 11.967235 h | ✓ |
+| vp | 9.961732 km/s | 9.961732 km/s | ✓ |
+| va | 1.506420 km/s | 1.506420 km/s | ✓ |
+
+No discrepancy found at this stage.
+
+## M2.1 Implementation
+
+New modules under `src/molniya_design/`:
+
+- **`constants.py`** — Earth constants (unchanged from M1) plus the M1
+  baseline element set, now *re-derived at full float64 precision* from
+  the two M1 design choices (target period = half sidereal day, perigee
+  altitude = 600 km) rather than stored as hand-rounded decimals — see
+  §M2.2 "Genuine discrepancy found and fixed" below.
+- **`elements.py`** — `coe_to_rv` (classical elements → ECI state via the
+  perifocal PQW frame and the standard 3-1-3 Euler rotation
+  R = R3(RAAN)·R1(i)·R3(argp)) and `rv_to_coe` (ECI state → classical
+  elements via angular-momentum/eccentricity-vector/node-vector geometry,
+  independent of `coe_to_rv`). Frame, rotation-sense, and unit conventions
+  are documented in the module docstring: ECI is right-handed equatorial
+  (X toward the reference direction, Z along the rotation axis); the
+  rotation matrix is confirmed right-handed/orientation-preserving
+  (det R = +1) by a unit test; all public-API angles are in degrees,
+  converted to radians immediately internally.
+- **`twobody.py`** — the two-body Cartesian EOM `rddot = -mu r/|r|^3` in
+  state form `y=[rx,ry,rz,vx,vy,vz]` (km, km/s), plus `specific_energy`,
+  `specific_angular_momentum`, `eccentricity_vector` helpers.
+- **`propagation.py`** — `propagate` (thin `scipy.integrate.solve_ivp`
+  wrapper, default method `DOP853`, explicit configurable `rtol`/`atol`,
+  default `1e-12`); `find_apsides` (radial-velocity zero-crossing event
+  detection, classifying perigee/apogee by relative radius only — it does
+  **not** consult the analytic rp/ra during classification, only in the
+  caller's cross-check); `kepler_state_at_time` (an **independent**
+  Kepler-equation analytical time-of-flight solver — mean anomaly →
+  eccentric anomaly via Newton iteration on `M=E-e sinE` → true anomaly →
+  `coe_to_rv` — which does not call `solve_ivp` at all, per the M2 scope
+  requirement for a real independent check); `geocentric_latitude_deg`
+  (documented as frame-independent between ECI/ECEF, since latitude does
+  not depend on the Earth-rotation/GMST transform that is explicitly out
+  of scope until M3).
+
+`pyproject.toml` gained `scipy>=1.10` as a runtime dependency.
+
+## M2.2 Genuine discrepancy found and fixed
+
+**What was found:** the first version of `constants.py` stored the M1
+baseline `a` and `e` as hand-rounded decimals (`a=26561.7624`,
+`e=0.7372860`, matching DESIGN.md's display precision). Recomputing
+`ra = a(1+e)` from those *rounded* values gave 46145.37795 km, about
+0.0099 km (2.1×10⁻⁷ relative) away from the DESIGN.md-reported
+46145.3879 km — large enough to fail several M2 regression tests written
+at 1×10⁻⁷ relative tolerance (`test_E`/`F`/`G` in `tests/test_twobody.py`
+initially failed with exactly this residual).
+
+**Diagnosis:** this is a **display-rounding artifact, not a physics
+error.** The original M1 derivation used full float64 precision
+internally and only rounded for the printed DESIGN.md table (e.g. the
+true e is 0.7372863710269664, which *does* round correctly to 0.737286 at
+6 decimal places — the bug was re-deriving `ra` from the *already-rounded*
+`e` rather than carrying full precision through).
+
+**Fix:** `constants.py` now re-derives `a`, `e`, and every dependent
+baseline quantity (`ra`, `rp`, `T`, `n`, `p`, `vp`, `va`, energy, angular
+momentum) directly from the two original design choices (§0.1/§0.2:
+half-sidereal-day period, 600 km perigee altitude) using the same
+closed-form physics as M1, evaluated once at full float64 precision at
+import time — eliminating the truncation step entirely rather than just
+adding more decimal digits. The DESIGN.md §9 table (rounded for
+human readability) is unchanged and still agrees with the recomputed
+values to the precision it reports. All M1 physics, element values, and
+design choices are otherwise identical — no M1 conclusion changes.
+
+**Regression test:** `tests/test_twobody.py::test_C_arbitrary_round_trip`
+and the whole `test_B`/`test_E`/`test_F`/`test_G` family now exercise this
+path at tight tolerance and pass; `constants.py`'s module docstring
+documents the fix so it cannot silently regress.
+
+A second, expected (non-bug) behavior was also handled explicitly:
+`find_apsides` naturally detects a spurious r·v=0 event at t≈0 s because
+the baseline epoch state is itself exactly at apogee (nu0=180°). This is
+correct behavior (apogee *is* an r·v=0 crossing), not a bug — tests and
+the report script filter for `t_s > 1.0` when looking for the *next*
+apogee to measure the numerical period.
+
+## M2.3 Numerical results
+
+All figures below are from `scripts/m2_verification_report.py`
+(reproducible; also exercised by `tests/test_twobody.py`).
+
+**Round trip (element → state → element), baseline:**
+
+| Element | Input | Recovered | Agreement |
+|---|---|---|---|
+| a | 26561.762430362043 km | 26561.762430362036 km | 8×10⁻¹⁶ km |
+| e | 0.7372863710269664 | 0.7372863710269664 | exact (float64) |
+| i | 63.43494882292201° | 63.43494882292201° | exact |
+| RAAN | 0.0° | 0.0° | exact |
+| ω | 270.0° | 270.0° | exact |
+| ν | 180.0° | 180.0° | exact |
+
+**Apsis detection over 2.05 periods (rtol=atol=1e-13):**
+
+| Apsis | Detected r | M1 analytical | Abs. error | Detected v | M1 analytical | Abs. error |
+|---|---|---|---|---|---|---|
+| Perigee | 6978.136999999 km | 6978.137000 km | ≤1.0×10⁻⁹ km | 9.961731876983 km/s | 9.961731876983 km/s | ≤2.7×10⁻¹³ km/s |
+| Apogee | 46145.387860715 km | 46145.387860724 km | ≤1.6×10⁻⁸ km | 1.506419883276 km/s | 1.506419883275 km/s | ≤4.1×10⁻¹³ km/s |
+
+**Numerical period vs Kepler period:**
+
+- Numerical (apogee-to-apogee): **43082.045250 s** (11.967235 h)
+- M1 analytical: 43082.045250 s (11.967235 h)
+- Relative error: **1.29×10⁻¹³**
+
+**One-period closure (rtol=atol=1e-13):**
+
+- Relative position error: **3.45×10⁻¹³**
+- Relative velocity error: **8.17×10⁻¹³**
+
+**Conservation over 2 periods (2000 samples, rtol=atol=1e-13):**
+
+- Specific energy relative drift: **5.01×10⁻¹²**
+- |h| relative drift: **1.22×10⁻¹²**
+- Eccentricity-vector max drift: **2.09×10⁻¹²**
+- Orbital-plane (ĥ) drift: below 1×10⁻¹⁰ (test `test_J`)
+
+All conservation residuals are consistent with double-precision floating
+point accumulation at these tolerances, not with any physical drift —
+expected for an unperturbed two-body integration.
+
+**Independent Kepler time-of-flight cross-check** (6 times across one
+period, `kepler_state_at_time` vs. `propagate`, neither calling the
+other):
+
+| ν-fraction of period | t (s) | Position rel. error | Velocity rel. error |
+|---|---|---|---|
+| 0.00 | 0.00 | 0 | 0 |
+| 0.10 | 4308.20 | 3.3×10⁻¹⁵ | 1.4×10⁻¹⁴ |
+| 0.25 | 10770.51 | 1.6×10⁻¹⁴ | 4.4×10⁻¹⁴ |
+| 0.50 | 21541.02 | 2.8×10⁻¹³ | 1.7×10⁻¹³ |
+| 0.63 | 27141.69 | 2.1×10⁻¹³ | 2.4×10⁻¹³ |
+| 0.90 | 38773.84 | 2.8×10⁻¹³ | 6.2×10⁻¹³ |
+
+Maximum relative error across all sampled times: position 2.8×10⁻¹³,
+velocity 6.2×10⁻¹³ — both consistent with double-precision accumulation
+over one full orbital revolution, confirming the numerical propagator
+independently against closed-form Kepler-equation time-of-flight.
+
+**Northern-apogee orientation regression check (numerical, DESIGN.md §4):**
+
+| ω | Numerical apogee latitude | Expected | Match |
+|---|---|---|---|
+| 270° | +63.434949° | +63.4349° (northern) | ✓ |
+| 90° | -63.434949° | -63.4349° (southern) | ✓ |
+
+This confirms M1 §4's derivation numerically and is encoded as a
+permanent regression test (`test_M_northern_apogee_omega_270`,
+`test_N_southern_apogee_omega_90`) so the ω convention cannot silently
+flip in later milestones.
+
+**Tolerance convergence study** (one-period closure, energy/|h| drift,
+apsis radius error, at three `solve_ivp` tolerance settings):
+
+| Tolerance | Closure (rel. pos. err) | Energy drift (rel.) | \|h\| drift (rel.) | Apogee r error | Perigee r error |
+|---|---|---|---|---|---|
+| loose (1e-6) | 9.44×10⁻⁶ | 6.79×10⁻⁶ | 2.77×10⁻⁷ | 0.728 km | 0.0114 km |
+| medium (1e-9) | 3.75×10⁻⁹ | 2.30×10⁻⁹ | 2.23×10⁻¹⁰ | 2.55×10⁻⁴ km | 2.04×10⁻⁶ km |
+| tight (1e-12) | 4.21×10⁻¹² | 2.24×10⁻¹² | 3.97×10⁻¹³ | 3.22×10⁻⁷ km | 7.18×10⁻⁹ km |
+
+Every metric decreases monotonically — by roughly 3 orders of magnitude
+per 3-orders-of-magnitude tolerance tightening — as `rtol`/`atol` tighten
+from loose → medium → tight, demonstrating genuine numerical convergence
+of the DOP853 integrator on this problem (not merely asserted).
+
+## M2.4 Figures
+
+- [`figures/m2_orbit_geometry.png`](figures/m2_orbit_geometry.png) — 3D
+  ECI two-body trajectory over one period, with Earth, perigee, and
+  apogee markers, explicitly labeled as an inertial trajectory (not a
+  ground track).
+- [`figures/m2_conservation_and_apsides.png`](figures/m2_conservation_and_apsides.png)
+  — altitude vs. time over 2 periods with detected apsides (top), and
+  specific-energy/angular-momentum relative error vs. time on a log scale
+  (bottom), showing the machine-precision noise floor (~1e-12 to 1e-16).
+
+Both figures were visually inspected for clipping, overlap, aspect-ratio
+distortion, missing units, and legend readability; none were found.
+
+## M2.5 Test suite
+
+`tests/test_twobody.py` implements checklist items A–P plus a rotation
+right-handedness check (34 tests total across both M1 and M2 files).
+`tests/test_placeholder.py` was updated transparently: the M1-era guard
+against "`molniya_design.propagate` existing" is now obsolete (M2 has
+been explicitly approved and implemented) and was removed with an
+explanatory note; the M3/M5 guards are unchanged, and an M4 (J2) guard
+was added. All 34 tests pass under `pytest -W error` with zero warnings.
+
+## M2.6 Scope guard confirmation
+
+No ECI→ECEF transform, GMST/Earth-rotation, longitude, ground-station
+access/elevation, coverage/revisit metric, J2 acceleration, secular J2
+propagation, numerical RAAN regression, or numerical critical-inclination
+verification was implemented in M2 — all remain explicitly deferred to
+M3/M4/M5 per the roadmap.

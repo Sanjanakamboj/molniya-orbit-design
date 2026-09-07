@@ -1,0 +1,69 @@
+==============================================================================
+M2 VERIFICATION REPORT
+==============================================================================
+
+Baseline state at epoch (apogee, nu0=180 deg):
+  r0 = [1.41279504e-11 2.06368448e+04 4.12736896e+04] km, |r0| = 46145.387861 km
+  v0 = [-1.50641988e+00  4.37798233e-16  8.75596467e-16] km/s, |v0| = 1.506420 km/s
+  M1 ra = 46145.387861 km, M1 va = 1.506420 km/s
+
+Round-trip element recovery (element->state->element):
+  a_km: input=26561.762430362043  recovered=26561.762430362036
+  e: input=0.7372863710269664  recovered=0.7372863710269664
+  i_deg: input=63.43494882292201  recovered=63.43494882292201
+  raan_deg: input=0.0  recovered=0.0
+  argp_deg: input=270.0  recovered=270.0
+  nu_deg: input=180.0  recovered=180.0
+
+Detected 5 apsides over 2.05 periods:
+  t=      0.0000 s  apogee   r=46145.387861 km  v=1.506420 km/s
+  t=  21541.0226 s  perigee  r=6978.137000 km  v=9.961732 km/s
+  t=  43082.0452 s  apogee   r=46145.387861 km  v=1.506420 km/s
+  t=  64623.0679 s  perigee  r=6978.137000 km  v=9.961732 km/s
+  t=  86164.0905 s  apogee   r=46145.387861 km  v=1.506420 km/s
+
+Numerical period (apogee-to-apogee) = 43082.045250 s (11.967235 h)
+M1 analytical period                = 43082.045250 s (11.967235 h)
+Relative error                       = 1.287e-13
+
+Detected perigee radii: [np.float64(6978.136999999444), np.float64(6978.136999998999)]
+  M1 rp = 6978.137000 km; max abs error = 1.000e-09 km
+Detected apogee radii: [np.float64(46145.387860724084), np.float64(46145.38786071514), np.float64(46145.38786070813)]
+  M1 ra = 46145.387861 km; max abs error = 1.596e-08 km
+
+Detected perigee speeds: [np.float64(9.961731876982805), np.float64(9.961731876982416)]
+  M1 vp = 9.961732 km/s; max abs error = 2.682e-13 km/s
+Detected apogee speeds: [np.float64(1.506419883275449), np.float64(1.5064198832757438), np.float64(1.506419883275859)]
+  M1 va = 1.506420 km/s; max abs error = 4.103e-13 km/s
+
+One-period closure (tight tol rtol=atol=1e-13):
+  relative position error = 3.446e-13
+  relative velocity error = 8.174e-13
+
+Conservation over 2 periods (2000 samples, rtol=atol=1e-13):
+  specific energy: min=-7.503275486, max=-7.503275486, rel drift=5.010e-12
+  |h|: min=69514.329795, max=69514.329795, rel drift=1.219e-12
+  eccentricity vector max drift = 2.088e-12
+
+Independent Kepler time-of-flight cross-check:
+  frac=0.00  t=      0.00 s  r_rel_err=0.000e+00  v_rel_err=0.000e+00
+  frac=0.10  t=   4308.20 s  r_rel_err=3.341e-15  v_rel_err=1.429e-14
+  frac=0.25  t=  10770.51 s  r_rel_err=1.563e-14  v_rel_err=4.423e-14
+  frac=0.50  t=  21541.02 s  r_rel_err=2.784e-13  v_rel_err=1.738e-13
+  frac=0.63  t=  27141.69 s  r_rel_err=2.079e-13  v_rel_err=2.437e-13
+  frac=0.90  t=  38773.84 s  r_rel_err=2.811e-13  v_rel_err=6.179e-13
+  max relative position error = 2.811e-13
+  max relative velocity error = 6.179e-13
+
+Northern-apogee orientation check:
+  omega=270 deg -> apogee latitude = 63.434949 deg (expect +63.4349)
+  omega=90  deg -> apogee latitude = -63.434949 deg (expect -63.4349)
+
+Tolerance convergence study (one-period closure + energy drift):
+  loose  (rtol=atol=1e-06): closure_r_err=9.437e-06  energy_drift=6.793e-06  h_drift=2.767e-07  apogee_r_err=7.284e-01 km  perigee_r_err=1.139e-02 km
+  medium (rtol=atol=1e-09): closure_r_err=3.746e-09  energy_drift=2.296e-09  h_drift=2.229e-10  apogee_r_err=2.552e-04 km  perigee_r_err=2.035e-06 km
+  tight  (rtol=atol=1e-12): closure_r_err=4.211e-12  energy_drift=2.240e-12  h_drift=3.973e-13  apogee_r_err=3.216e-07 km  perigee_r_err=7.181e-09 km
+
+==============================================================================
+END M2 VERIFICATION REPORT
+==============================================================================
