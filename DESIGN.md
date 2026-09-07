@@ -548,11 +548,11 @@ J2 secular-theory accuracy, not measurement uncertainty.
 - **M4** — First-order J2 secular propagation + critical-inclination
   verification (§10.G, H, I). ✅ complete — see §M4 below.
 - **M5** — High-latitude dwell/coverage/revisit + parameter sensitivity
-  study.
+  study. ✅ complete — see §M5 below.
 - **M6** — Independent validation + portfolio polish + CI/reproducibility
   audit.
 
-M5 is **not** started as part of this milestone.
+M6 is **not** started as part of this milestone.
 
 ---
 
@@ -1411,3 +1411,442 @@ deferred to M5/M6 per the roadmap. **Coverage analysis (access fraction,
 revisit interval, coverage gaps under J2) remains entirely M5's scope**;
 this milestone only establishes the J2-perturbed orbital dynamics and
 ground-track drift that M5's coverage study will need to account for.
+
+---
+
+# Milestone 5 — High-Latitude Coverage, Dwell/Revisit Analysis, and Parameter Sensitivity
+
+**Status:** M5 complete. Turns the M1–M4 verified dynamics into a real
+regional coverage/revisit trade study: a vectorized regional-grid
+coverage engine built on the M4 secular-J2 model and M3 access geometry,
+a principled fix for the M3 window-boundary pass-counting issue, baseline
+regional metrics, and six sensitivity studies (RAAN, minimum elevation,
+inclination, argument of perigee, perigee altitude/eccentricity, and
+horizon length), each with convergence checks and an independent
+cross-check. **This is still geometric access only** (spherical Earth,
+first-order secular J2, no refraction, no link budget) — see §11 for the
+unchanged limitations list. **No multi-satellite constellation design is
+performed** — M5 is explicitly single-spacecraft.
+
+## M5.0 Pre-flight verification
+
+Before writing any M5 code, the M4 headline values were reproduced from
+production code, and M2/M3/M4 reports and all 8 committed figure PNGs
+were regenerated and found byte-for-byte/numerically identical to the
+committed artifacts (zero drift):
+
+| Quantity | M4 committed value | Recomputed (pre-M5) | Match |
+|---|---|---|---|
+| RAAN_dot | -0.145135 deg/day | -0.145135 deg/day | ✓ |
+| argp_dot at critical inclination | ~0 | 7.206×10⁻¹⁷ deg/day | ✓ |
+| 7-day same-side apogee longitude drift | -1.16629 deg | -1.16629 deg | ✓ |
+| 14-day same-side apogee longitude drift | -2.33258 deg | -2.33258 deg | ✓ |
+| i=65° argp drift over 14 days | -0.243003 deg | -0.243003 deg | ✓ |
+
+`pytest -W error` on the pre-M5 tree passed 98/98.
+
+## M5.1 Regional grid and weighting policy
+
+Target region (DESIGN.md §7, unchanged): **60°–75° N, full 360° longitude**,
+minimum elevation **10°**, representative site **65° N, 40° E**. Production
+grid: **2.5° × 2.5°** (7 latitudes × 144 longitudes = 1008 points).
+Convergence checked at 5°, 2.5°, and 1° (§M5.9).
+
+Two regional aggregate statistics are computed and **explicitly labeled**
+throughout (never conflated):
+
+- **Point-weighted mean** — simple average over grid points, each point
+  counted equally regardless of the shrinking physical area it
+  represents near the pole.
+- **Area-weighted mean** — weight ∝ cos(latitude), the standard
+  spherical-Earth area-element weighting; the more physically meaningful
+  "fraction of actual band area with X% access" statistic.
+
+At the baseline (14-day horizon): point-weighted mean access fraction
+**80.50%**, area-weighted mean **80.24%** — close but not identical,
+exactly as expected since the access-fraction field varies only mildly
+with latitude across a 15°-wide band.
+
+## M5.2 Fixing the M3 window-boundary pass issue
+
+M3 (§M3.5) documented that a single continuous access run could be split
+into two reported "passes" purely because the analysis window boundary
+fell in the middle of it. M5 fixes this with **two distinct, tested
+policies** (`access.py`: `merge_cyclic_boundary_intervals`,
+`summarize_boundary_passes`, `access_metrics_boundary_aware`), selected
+explicitly per call site rather than applied uniformly:
+
+- **Periodic case** (`periodic=True`, e.g. the exactly-one-sidereal-day
+  two-body case where M3 proved the ground track repeats to 1.17×10⁻¹⁰
+  deg): a leading and trailing boundary-touching interval are merged
+  into one physical pass — they are *known* to be the same continuous
+  run wrapping around the window edge.
+- **Non-periodic case** (`periodic=False`, the M4/M5 J2 case, where the
+  ground track does **not** exactly repeat, §M4.5): leading/trailing
+  boundary intervals are **not** merged and **not** silently counted as
+  whole passes — they are flagged `has_leading_partial`/
+  `has_trailing_partial` and excluded from the reported `num_passes`
+  (which counts only complete interior passes). `total_access_time_s`,
+  `access_fraction`, `longest_pass_s`, and `max_gap_s` are computed from
+  the full interval list regardless (those quantities are correct either
+  way — only the *pass count* is ambiguous across a non-periodic
+  boundary).
+
+Both policies are unit-tested on synthetic signals with known ground
+truth (tests C, D) — see §M5.10.
+
+## M5.3 Coverage engine architecture (performance note)
+
+New module `coverage.py`. Key design decision: **the satellite trajectory
+does not depend on the ground point**, so it is computed once per
+(elements, time-grid) and reused for every grid point, rather than
+re-propagated per point. Two new vectorized primitives make this fast:
+
+- `elements.coe_to_r_array` — vectorized classical-elements→ECI position
+  for arrays of (possibly time-varying) RAAN/argp/true-anomaly, needed
+  because the M4 secular model has RAAN(t) *and* argp(t) both varying
+  sample-to-sample (unlike M2's fixed-element case). Cross-checked
+  against the scalar `coe_to_rv` (exact match, test
+  `test_vectorized_coe_to_r_matches_scalar`).
+- `frames.eci_array_to_ecef_array` — vectorized ECI→ECEF for an array of
+  times. Cross-checked against the scalar `eci_to_ecef` (exact match,
+  test `test_vectorized_ecef_matches_scalar`).
+- `propagation.mean_to_eccentric_anomaly_array` — vectorized Kepler
+  solve (array-safe Newton iteration convergence check), kept as a
+  **separate function** from the M2 scalar solver so the original tested
+  M2 contract is left untouched.
+
+With this architecture, the full 14-day/2.5°-grid baseline run (1008
+points × 10081 time samples) completes in **~4-5 seconds**; a
+7-day/5°-grid sensitivity sweep in well under a second — fast enough
+that every sensitivity axis in this document is a genuine, freshly
+computed regional sweep, not an extrapolation from a single point.
+
+## M5.4 Baseline regional coverage (14-day, authoritative)
+
+| Metric | Value |
+|---|---|
+| Point-weighted mean access fraction | **80.50%** |
+| Area-weighted mean access fraction | **80.24%** |
+| Min / max access fraction across grid | 75.53% / 82.70% |
+| **Worst-case maximum gap** | **10573.3 s = 2.937 h** |
+| Median max gap | 8245.8 s = 2.291 h |
+| Worst point | **60.0° N, 270.0° E** |
+| Best-access point | 75.0° N, 0.0° E |
+
+This is **not continuous coverage** — a single spacecraft leaves a
+worst-case gap of essentially **3 hours** at 60° N, 270° E, over a
+14-day horizon (§M5.11 discusses this explicitly).
+
+**Representative site (65° N, 40° E), 14 days, non-periodic boundary
+handling:** access fraction **80.28%**, max gap **8611.1 s = 2.392 h**,
+longest pass **37807.9 s = 10.502 h**, 27 complete interior passes (plus
+one leading and one trailing partial pass at the window edges — reported
+honestly per §M5.2, not merged), peak elevation **66.55°**.
+
+## M5.5 Horizon stability (1/3/7/14 days)
+
+| Horizon | Worst max gap | Worst point | Point-weighted mean access |
+|---|---|---|---|
+| 1 day | 10572.8 s (2.9369 h) | (60.0, 270.0) | 80.44% |
+| 3 days | 10572.9 s (2.9369 h) | (60.0, 90.0) | 80.44% |
+| 7 days | 10573.8 s (2.9372 h) | (60.0, 270.0) | 80.44% |
+| 14 days | 10574.1 s (2.9373 h) | (60.0, 270.0) | 80.44% |
+
+**The worst-gap *value* is extremely stable across horizons** (varies by
+<2 s / <0.02% from 1 to 14 days) — a robust headline number. The worst
+*point*, however, alternates between two grid cells 180° apart in
+longitude (60°N, 90°E and 60°N, 270°E) depending on horizon: these two
+longitudes sit on the two mirror-image apogee lobes of the Molniya
+ground track (§M3.3/§M4.5) and have nearly identical (within grid
+resolution) worst-case gaps by construction of the orbit's own
+near-180°-symmetry — which lobe reports as "the" worst by a hair depends
+on exactly how the horizon truncates each lobe's dwell. This is reported
+transparently rather than picking one arbitrarily; both points are
+physically representative of the same worst-case geometry.
+
+## M5.6 RAAN / longitude dependence
+
+| RAAN (deg) | Regional point-weighted mean access | Site (65N,40E) access fraction | Site max gap (s) |
+|---|---|---|---|
+| 0 | 0.804436 | 0.803172 | 8581.085 |
+| 60 | 0.804436 | 0.814434 | 8094.012 |
+| 120 | 0.804436 | 0.783743 | 9362.354 |
+| 180 | 0.804436 | 0.803170 | 8578.960 |
+
+**Confirmed exactly as expected:** the full-longitude regional aggregate
+is **invariant under RAAN rotation to 6 decimal places** (0.804436 at
+every tested RAAN — a pure rotation of the whole ground-track pattern
+about the polar axis does not change how much of the full-longitude band
+it covers in aggregate). The **site-specific** access fraction varies
+meaningfully (0.784–0.814) because a fixed ground site sees a different
+phase of the (rotated) ground track. This cleanly separates **regional
+rotational invariance** from **site-specific epoch/phase dependence**, as
+required — and is a genuine, non-trivial verification that the M1 §0.4
+"RAAN is conventional until an epoch is fixed" caveat does not undermine
+the *regional* conclusions of this milestone, even though it would matter
+for operating a real fixed ground station.
+
+## M5.7 Minimum-elevation sensitivity
+
+| el_min (deg) | Regional mean access | Worst max gap (h) | Site access | Site longest pass (h) |
+|---|---|---|---|---|
+| 5 | 82.76% | 2.525 | 82.67% | 10.622 |
+| 10 (baseline) | 80.44% | 2.937 | 80.32% | 10.489 |
+| 15 | 77.62% | 3.474 | 77.46% | 10.339 |
+| 20 | 74.06% | 4.225 | 73.88% | 10.169 |
+
+**Monotonic as expected, no reversal found**: higher minimum elevation
+→ strictly less access, strictly longer worst-case gap. See
+[`figures/m5_sensitivity_trade.png`](figures/m5_sensitivity_trade.png)
+top-right panel.
+
+## M5.8 Inclination sensitivity — a genuine, non-obvious finding
+
+| i (deg) | Regional mean access | Worst max gap (h) | Site access | argp_dot (deg/day) |
+|---|---|---|---|---|
+| 60.0 | 79.67% | 3.172 | 79.57% | +0.040566 |
+| 62.0 | 80.15% | 3.026 | 80.03% | +0.016554 |
+| 63.4349 (critical/baseline) | 80.44% | 2.937 | 80.32% | 0.000000 |
+| 65.0 | 80.74% | 2.865 | 80.60% | -0.017357 |
+| 70.0 | 81.48% | 2.697 | 81.32% | -0.067358 |
+
+**This does not show the critical inclination maximizing short-horizon
+access** — access fraction increases and worst gap *decreases*
+monotonically from i=60° through i=70°, i.e. the critical inclination is
+**not** the best performer on this 7-day metric; i=70° is. This is
+physically explicable and reported honestly rather than hidden: a higher
+inclination directly raises the maximum reachable apogee latitude
+(≈i, DESIGN.md §4), which by itself improves overhead geometry to the
+60–75° N band, and at a 7-day horizon even the *worst* off-critical
+argp_dot tested (60°: +0.0406°/day) has only accumulated a ~0.28°
+argument-of-perigee shift — far too small to meaningfully degrade
+short-horizon access. **The critical inclination's real benefit is
+long-horizon orientation stability** (ω frozen indefinitely, §M4.6,
+avoiding a slow multi-year drift of apogee away from the northern
+service latitude and the resulting need for inclination-change
+stationkeeping), not a short-horizon access-fraction maximum. M5 reports
+this distinction explicitly rather than asserting the critical
+inclination "wins" a metric it was never designed to maximize.
+
+## M5.9 Argument-of-perigee sensitivity
+
+| argp (deg) | Regional mean access | Worst max gap (h) | Site access | Site longest pass (h) |
+|---|---|---|---|---|
+| 240 | 74.33% | 5.824 | 70.38% | 10.348 |
+| 255 | 79.00% | 4.035 | 77.62% | 10.485 |
+| **270 (baseline)** | **80.44%** | **2.937** | **80.32%** | **10.489** |
+| 285 | 79.00% | 4.035 | 79.86% | 10.342 |
+| 300 | 74.33% | 5.824 | 77.00% | 9.930 |
+| **90 (southern control)** | **0.45%** | **168.0 (= full 7-day window)** | **0.65%** | **0.156** |
+
+Baseline ω=270° is a clear local maximum (nearly symmetric ±15°/±30°
+falloff either side). The **ω=90° control case fails catastrophically**,
+exactly as required by M5 §10: regional mean access collapses to 0.45%,
+and the worst-case grid point sees **zero access for the entire 7-day
+analysis window** (`worst_max_gap_s` = 604800 s = 7×86400 s exactly —
+not a large-but-finite number, literally the whole horizon). This is the
+expected, physically obvious result of putting apogee over the southern
+hemisphere (DESIGN.md §4) and directly confirms the ω=270° orientation
+implementation is correct — no investigation of a frame-sign error was
+needed, since the result matched the predicted catastrophic failure mode
+exactly.
+
+## M5.10 Perigee-altitude / eccentricity sensitivity (a fixed)
+
+Semi-major axis held at the M1 half-sidereal-day value; perigee altitude
+varied, eccentricity recomputed from it (DESIGN.md §0.2 relation).
+
+| hp (km) | e | ha (km) | Regional mean access | Site access | RAAN_dot (deg/day) |
+|---|---|---|---|---|---|
+| 300 | 0.748581 | 40067.25 | **81.17%** | 81.05% | -0.156427 |
+| 600 (baseline) | 0.737286 | 39767.25 | 80.44% | 80.32% | -0.145135 |
+| 1000 | 0.722227 | 39367.25 | 79.47% | 79.34% | -0.132105 |
+| 2000 | 0.684579 | 38367.25 | 77.03% | 76.88% | -0.107082 |
+
+**Confirmed, not assumed, per M5 §11's explicit instruction:** lower
+perigee altitude → higher eccentricity → **more** access (81.17% at
+hp=300 km vs. 77.03% at hp=2000 km), consistent with the physical
+expectation that a more eccentric orbit (fixed period) spends
+proportionally more time near apogee (slower angular rate there, M1 §6
+Kepler's-2nd-law argument) — while also, as a secondary effect, changing
+the J2 secular rates (RAAN_dot magnitude grows with lower perigee/higher
+eccentricity, since the `(Re/p)²` factor grows as p shrinks). The
+600 km baseline is a deliberate engineering trade (drag-safety margin,
+DESIGN.md §0.2) against this access-fraction gradient, not a
+coverage-optimal choice — again reported honestly rather than implying
+600 km is "best."
+
+## M5.11 Dwell-time cross-check (M1 vs. M3 vs. M5) — do not conflate these
+
+| Quantity | Value | What it actually measures |
+|---|---|---|
+| M1 anomaly-based dwell proxy | 84.01% | Fraction of orbital *period* within ±60° true anomaly of apogee — a pure orbit-geometry proxy, no ground site, no elevation, no Earth rotation. |
+| M3 site access fraction (1 sidereal day, two-body) | 80.30% | Elevation ≥10° access at 65°N/40°E, one day, no J2. |
+| M5 site access fraction (14 days, J2 secular) | 80.28% | Same site/threshold, 14-day horizon, J2-perturbed ground track. |
+| M5 regional point-weighted mean (14 days, J2) | 80.50% | Averaged over the full 60–75°N/0–360°E grid, 14 days, J2. |
+
+All four numbers are in the same ballpark (~80–84%) because they all
+ultimately trace back to the same underlying high-eccentricity
+apogee-dwell physics (M1 §6), but they are **not interchangeable**: the
+M1 figure is a pure anomaly-window proxy with no notion of a ground
+observer at all (explicitly labeled as such since M1 — DESIGN.md §6);
+M3/M5 site/regional numbers require actual elevation-threshold
+line-of-sight geometry against a spherical Earth. The ~3.5-point gap
+between the M1 proxy (84.01%) and the M3/M5 site numbers (~80.3%) is
+expected: not every part of the ±60°-true-anomaly dwell window is
+simultaneously above 10° elevation at a specific fixed site — the
+orbit-geometry window is necessarily a superset of any single site's
+actual visibility window. **The M1 84.01% figure was never a coverage
+prediction and is not treated as one here.**
+
+## M5.12 Single-spacecraft coverage honesty
+
+**Headline result, stated plainly:** one Molniya spacecraft, at the
+baseline design, leaves a worst-case gap of **essentially 3 hours**
+(10573 s = 2.937 h) somewhere in the 60–75°N target band, persistently
+across 1–14 day horizons (§M5.5). The best individual grid point still
+has zero access roughly **17%** of the time (100% − 82.7%). This is
+**not continuous coverage** by any reasonable definition, and this
+document does not claim it is. Classical operational Molniya
+communications systems address this with multiple phased spacecraft
+(historically 2–3, ~8 hours apart in mean anomaly) — mentioned here only
+as context for why real Molniya constellations exist; **no
+multi-satellite constellation is designed, sized, or optimized in M5**
+(explicitly deferred, out of scope per §M5's scope guard).
+
+## M5.13 Numerical convergence
+
+**Time-step convergence** (representative site, 3-day horizon):
+
+| dt (s) | Site access fraction | Site longest pass (s) | Regional worst gap (s) |
+|---|---|---|---|
+| 120.0 | 0.803380 | 37735.377 | 10572.916 |
+| 60.0 | 0.803395 | 37736.155 | 10572.642 |
+| 30.0 | 0.803398 | 37736.330 | 10572.515 |
+| 15.0 | 0.803399 | 37736.418 | 10572.465 |
+
+Every metric converges monotonically; the 120 s→15 s change in access
+fraction is 1.9×10⁻⁵ (absolute), in longest pass 1.04 s, in worst gap
+0.45 s — all far below any decision-relevant precision. Production runs
+use dt=60 s (baseline regional grid) or dt=120 s (sensitivity sweeps),
+both comfortably converged.
+
+**Spatial-grid convergence** (3-day horizon, dt=120 s):
+
+| Grid step (deg) | n points | Worst max gap (s) | Worst point | Point-weighted mean access |
+|---|---|---|---|---|
+| 5.0 | 288 | 10572.916 | (60.0, 90.0) | 0.804436 |
+| 2.5 | 1008 | 10573.870 | (60.0, 87.5) | 0.804968 |
+| 1.0 | 5760 | 10574.175 | (60.0, 88.0) | 0.805287 |
+
+The **worst-gap value** is stable to within 1.3 s (0.01%) across a 5×
+resolution range — a robust number regardless of grid choice. The
+**worst-point longitude** does shift by a few degrees between grid
+resolutions (90° → 87.5° → 88.0°) as the true (broad, shallow) gap
+maximum is triangulated more precisely — this reflects a genuinely broad
+worst-case region rather than a narrow, resolution-sensitive spike, so
+**no local refinement utility was implemented** (M5 §15: "only add this
+if needed" — the headline worst-gap value does not depend materially on
+grid resolution/phase, so the optional refinement step was evaluated and
+found unnecessary, not skipped by default).
+
+## M5.14 Independent access verification
+
+| Point | max \|elevation error\| (ENU vs. triangle-geometry) |
+|---|---|
+| Representative site (65°N, 40°E) | 7.105×10⁻¹⁴ deg |
+| Worst regional point (60°N, 270°E) | 5.713×10⁻¹² deg |
+| Band-edge point (75°N, 180°E) | 4.974×10⁻¹⁴ deg |
+
+All three at the double-precision floor, using the same independent
+triangle-geometry method established in M3 (§M3.6) — now re-run against
+J2-secular satellite states rather than only the M3 two-body case,
+confirming the cross-check still holds with the new dynamics.
+
+## M5.15 Figures
+
+- [`figures/m5_regional_max_gap.png`](figures/m5_regional_max_gap.png) —
+  regional maximum-gap heatmap, 60–75°N, 14-day horizon, representative
+  site and worst point marked, explicitly labeled "geometric access,
+  first-order secular J2, spherical Earth" and not RF coverage.
+- [`figures/m5_access_fraction_map.png`](figures/m5_access_fraction_map.png)
+  — regional access-fraction heatmap, same region/horizon, explicitly
+  distinguished from the M1 anomaly dwell proxy in the subtitle.
+- [`figures/m5_sensitivity_trade.png`](figures/m5_sensitivity_trade.png)
+  — 4-panel sensitivity trade (inclination, minimum elevation, perigee
+  altitude, argument of perigee), baseline marked in every panel, the
+  ω=90° catastrophic case annotated rather than distorting the axis.
+- [`figures/m5_representative_site_timeline.png`](figures/m5_representative_site_timeline.png)
+  (optional, included) — 14-day elevation/access timeline at 65°N/40°E,
+  showing the alternating strong/weak-pass pattern and the slow J2 drift
+  visible even over two weeks.
+
+All four figures were visually inspected for clipping, overlap,
+misleading color scales, fake longitude-wrap lines, ambiguous units, and
+unclear metric definitions. **One minor rendering issue was found and
+fixed** (§M5.16).
+
+## M5.16 Genuine discrepancy found and fixed
+
+**What was found:** in the first version of
+`figures/m5_access_fraction_map.png`, the "best point" marker (at the
+grid corner, 75°N/0°E) sat directly under the in-plot legend box,
+partially obscured.
+
+**Fix:** moved the legend below both regional-map figures
+(`bbox_to_anchor`, matching the M3/M4 convention already used for the
+ground-track figures) and set explicit y-axis limits so the top grid row
+is not visually cropped against the legend. Re-inspected: both markers
+fully legible. This was a figure-layout issue only — no numerical result
+was affected. (The 75°N/0°E marker still sits at the literal grid corner
+in the final figure — that is an honest depiction of where the best
+point actually is, not a rendering defect; see §M5.15.)
+
+No other genuine bugs were found in M5: the coverage engine's vectorized
+primitives were cross-checked exactly against their scalar M2/M3
+equivalents before use (§M5.3), the boundary-pass fix was designed
+specifically to correct the M3-documented issue (§M5.2) rather than
+introduce a new one, and every "surprising" numeric result encountered
+during this milestone (the inclination-sensitivity direction, §M5.8; the
+ω=90° full-window-zero-access edge case, §M5.9) was investigated and
+found to be a genuine, physically explicable property of the system —
+not a code defect — and is reported as such rather than smoothed over.
+
+## M5.17 Test suite
+
+`tests/test_coverage.py` implements checklist items A–R (22 new tests,
+plus 2 vectorized-primitive cross-check tests run first). All M1–M4
+regression tests continue to pass unchanged. `tests/test_placeholder.py`
+was updated transparently, consistent with the precedent set at M2/M3/M4:
+the M1-era guard against `molniya_design.coverage` existing is now
+obsolete (M5 has been explicitly approved and implemented, and
+`coverage` is the real name of the new production module) and was
+removed with an explanatory note documenting the full guard-removal
+history across M2–M5.
+
+**Total: 117 tests pass under `pytest -W error`, zero warnings**
+(98 from M1–M4 + 22 new M5 tests; the placeholder file's own M2–M5
+guard-removal history reduced its own test count from 5 to 2 over the
+project's life, both still passing).
+
+## M5.18 Results artifacts
+
+Saved under `results/`: `m5_baseline_regional_metrics.json` (all scalar
+results in this section, machine-readable), `m5_grid_metrics.csv`
+(per-point baseline 14-day/2.5° grid, 1008 rows), `m5_sensitivity.csv`
+(all four sensitivity sweeps, combined), `m5_convergence.csv` (time and
+spatial convergence data), and `m5_verification_report.txt` (full
+human-readable report, reproducible via
+`python scripts/m5_verification_report.py`).
+
+## M5.19 Scope guard confirmation
+
+No multi-satellite constellation design, Walker-pattern optimization,
+RF link budget, antenna pattern, atmospheric/rain loss modeling,
+stationkeeping design, launch-vehicle analysis, full force-model
+propagation, drag/SRP/lunisolar perturbation, ephemeris (Moon/Sun)
+propagation, or final CI/portfolio packaging was implemented in M5 — all
+remain explicitly deferred to M6 (where applicable) per the roadmap.
+M5 ends with single-satellite high-latitude coverage/revisit analysis
+and sensitivity, exactly as scoped.

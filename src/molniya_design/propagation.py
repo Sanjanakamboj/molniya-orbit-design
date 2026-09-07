@@ -175,6 +175,30 @@ def mean_to_eccentric_anomaly(
     return E % (2.0 * np.pi)
 
 
+def mean_to_eccentric_anomaly_array(
+    M_rad: np.ndarray, e: float, tol: float = 1e-14, maxiter: int = 100
+) -> np.ndarray:
+    """Vectorized Newton solve of Kepler's equation for an array of mean
+    anomalies (M5 performance primitive — regional-grid coverage needs
+    thousands of samples). Algebraically identical Newton iteration to
+    the scalar :func:`mean_to_eccentric_anomaly`; kept as a separate
+    function rather than generalizing the scalar one, so the original
+    M2 scalar contract (and its tests) is left completely untouched.
+    """
+    M_rad = np.asarray(M_rad, dtype=float) % (2.0 * np.pi)
+    E = np.where(e < 0.8, M_rad, np.pi * np.ones_like(M_rad))
+    for _ in range(maxiter):
+        f = E - e * np.sin(E) - M_rad
+        fp = 1.0 - e * np.cos(E)
+        dE = -f / fp
+        E = E + dE
+        if np.max(np.abs(dE)) < tol:
+            break
+    else:
+        raise RuntimeError("Kepler's equation did not converge (array form)")
+    return E % (2.0 * np.pi)
+
+
 def eccentric_to_true_anomaly(E_rad: float, e: float) -> float:
     nu = 2.0 * np.arctan2(
         np.sqrt(1 + e) * np.sin(E_rad / 2.0), np.sqrt(1 - e) * np.cos(E_rad / 2.0)

@@ -1,0 +1,15 @@
+study,parameter,value,metric,result
+time,dt_s,120.0,site_access_fraction,0.8033803428746973
+time,dt_s,120.0,regional_worst_gap_s,10572.916499692947
+time,dt_s,60.0,site_access_fraction,0.8033945352881586
+time,dt_s,60.0,regional_worst_gap_s,10572.641525455052
+time,dt_s,30.0,site_access_fraction,0.8033982298109505
+time,dt_s,30.0,regional_worst_gap_s,10572.514811402943
+time,dt_s,15.0,site_access_fraction,0.8033993511623133
+time,dt_s,15.0,regional_worst_gap_s,10572.46515186
+spatial,grid_step_deg,5.0,worst_max_gap_s,10572.916499692947
+spatial,grid_step_deg,5.0,point_weighted_mean_access_fraction,0.8044359735849708
+spatial,grid_step_deg,2.5,worst_max_gap_s,10573.870351601916
+spatial,grid_step_deg,2.5,point_weighted_mean_access_fraction,0.8049683593530427
+spatial,grid_step_deg,1.0,worst_max_gap_s,10574.174879042286
+spatial,grid_step_deg,1.0,point_weighted_mean_access_fraction,0.80528674595243

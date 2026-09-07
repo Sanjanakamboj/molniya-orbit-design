@@ -1,0 +1,353 @@
+{
+  "baseline_14day": {
+    "point_weighted_mean_access_fraction": 0.8049830965950023,
+    "area_weighted_mean_access_fraction": 0.8023544039026109,
+    "min_access_fraction": 0.755309774075152,
+    "max_access_fraction": 0.8269733318966611,
+    "worst_max_gap_s": 10573.337397868163,
+    "worst_max_gap_h": 2.9370381660744895,
+    "median_max_gap_s": 8245.773586518095,
+    "worst_gap_point_lat_deg": 60.0,
+    "worst_gap_point_lon_deg": 270.0,
+    "best_access_point_lat_deg": 75.0,
+    "best_access_point_lon_deg": 0.0
+  },
+  "representative_site_14day": {
+    "lat_deg": 65.0,
+    "lon_deg": 40.0,
+    "access_fraction": 0.8028259942263719,
+    "max_gap_s": 8611.13182102982,
+    "longest_pass_s": 37807.891661421396,
+    "num_complete_passes": 27,
+    "has_leading_partial": true,
+    "has_trailing_partial": true,
+    "peak_elevation_deg": 66.54963762113626
+  },
+  "horizon_stability": [
+    {
+      "days": 1,
+      "point_weighted_mean_access_fraction": 0.8044362906674581,
+      "area_weighted_mean_access_fraction": 0.8011328569317244,
+      "min_access_fraction": 0.75526110877876,
+      "max_access_fraction": 0.8269587823014299,
+      "worst_max_gap_s": 10572.81659101665,
+      "worst_max_gap_h": 2.936893497504625,
+      "median_max_gap_s": 8285.68334254804,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 270.0,
+      "best_access_point_lat_deg": 75.0,
+      "best_access_point_lon_deg": 180.0
+    },
+    {
+      "days": 3,
+      "point_weighted_mean_access_fraction": 0.8044359735849708,
+      "area_weighted_mean_access_fraction": 0.8011324728833459,
+      "min_access_fraction": 0.7552642271244386,
+      "max_access_fraction": 0.8269610846689316,
+      "worst_max_gap_s": 10572.916499692947,
+      "worst_max_gap_h": 2.9369212499147075,
+      "median_max_gap_s": 8288.2820594675,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 90.0,
+      "best_access_point_lat_deg": 75.0,
+      "best_access_point_lon_deg": 180.0
+    },
+    {
+      "days": 7,
+      "point_weighted_mean_access_fraction": 0.8044360867729721,
+      "area_weighted_mean_access_fraction": 0.8011326021259161,
+      "min_access_fraction": 0.7552737671108186,
+      "max_access_fraction": 0.8269647390131435,
+      "worst_max_gap_s": 10573.76213196211,
+      "worst_max_gap_h": 2.937156147767253,
+      "median_max_gap_s": 8292.433745876599,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 270.0,
+      "best_access_point_lat_deg": 75.0,
+      "best_access_point_lon_deg": 180.0
+    },
+    {
+      "days": 14,
+      "point_weighted_mean_access_fraction": 0.8044362160105855,
+      "area_weighted_mean_access_fraction": 0.8011328182122185,
+      "min_access_fraction": 0.7552961360058927,
+      "max_access_fraction": 0.8269583637187571,
+      "worst_max_gap_s": 10574.138914449024,
+      "worst_max_gap_h": 2.9372608095691732,
+      "median_max_gap_s": 8292.433745876599,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 270.0,
+      "best_access_point_lat_deg": 75.0,
+      "best_access_point_lon_deg": 180.0
+    }
+  ],
+  "raan_dependence": [
+    {
+      "raan_deg": 0.0,
+      "regional_point_weighted_mean_access_fraction": 0.8044359735202105,
+      "site_access_fraction": 0.8031719708720327,
+      "site_max_gap_s": 8581.085040178034
+    },
+    {
+      "raan_deg": 60.0,
+      "regional_point_weighted_mean_access_fraction": 0.8044359735202105,
+      "site_access_fraction": 0.8144339118879899,
+      "site_max_gap_s": 8094.011542487962
+    },
+    {
+      "raan_deg": 120.0,
+      "regional_point_weighted_mean_access_fraction": 0.8044359735202105,
+      "site_access_fraction": 0.7837434903133654,
+      "site_max_gap_s": 9362.354494675448
+    },
+    {
+      "raan_deg": 180.0,
+      "regional_point_weighted_mean_access_fraction": 0.8044359735202105,
+      "site_access_fraction": 0.8031701309921989,
+      "site_max_gap_s": 8578.96014607558
+    }
+  ],
+  "elevation_sensitivity": [
+    {
+      "elevation_min_deg": 5.0,
+      "regional_mean_access_fraction": 0.8276055868288373,
+      "worst_max_gap_s": 9089.223522383138,
+      "site_access_fraction": 0.826672896800055,
+      "site_longest_pass_s": 38241.38914206339
+    },
+    {
+      "elevation_min_deg": 10.0,
+      "regional_mean_access_fraction": 0.8044360867729721,
+      "worst_max_gap_s": 10573.76213196211,
+      "site_access_fraction": 0.8031719708720327,
+      "site_longest_pass_s": 37761.63715308608
+    },
+    {
+      "elevation_min_deg": 15.0,
+      "regional_mean_access_fraction": 0.7762002496465316,
+      "worst_max_gap_s": 12506.332545344194,
+      "site_access_fraction": 0.7745821799164629,
+      "site_longest_pass_s": 37222.322269879514
+    },
+    {
+      "elevation_min_deg": 20.0,
+      "regional_mean_access_fraction": 0.7406132111550368,
+      "worst_max_gap_s": 15210.882618614218,
+      "site_access_fraction": 0.7387800336547087,
+      "site_longest_pass_s": 36607.70509091701
+    }
+  ],
+  "inclination_sensitivity": [
+    {
+      "i_deg": 60.0,
+      "regional_mean_access_fraction": 0.7967153726945994,
+      "worst_max_gap_s": 11419.121394200833,
+      "site_access_fraction": 0.7956969672812084,
+      "argp_dot_deg_day": 0.04056633818210425
+    },
+    {
+      "i_deg": 62.0,
+      "regional_mean_access_fraction": 0.8014499934350542,
+      "worst_max_gap_s": 10892.091479753377,
+      "site_access_fraction": 0.8002768756331334,
+      "argp_dot_deg_day": 0.0165539447803546
+    },
+    {
+      "i_deg": 63.43494882292201,
+      "regional_mean_access_fraction": 0.8044360867729721,
+      "worst_max_gap_s": 10573.76213196211,
+      "site_access_fraction": 0.8031719708720327,
+      "argp_dot_deg_day": 7.206029227920427e-17
+    },
+    {
+      "i_deg": 65.0,
+      "regional_mean_access_fraction": 0.8073559716779192,
+      "worst_max_gap_s": 10312.702173066791,
+      "site_access_fraction": 0.806011027093385,
+      "argp_dot_deg_day": -0.017357366445480294
+    },
+    {
+      "i_deg": 70.0,
+      "regional_mean_access_fraction": 0.814754011354703,
+      "worst_max_gap_s": 9707.576298707863,
+      "site_access_fraction": 0.8132016195678365,
+      "argp_dot_deg_day": -0.06735815032823618
+    }
+  ],
+  "argp_sensitivity": [
+    {
+      "argp_deg": 240.0,
+      "regional_mean_access_fraction": 0.7433334367723318,
+      "worst_max_gap_s": 20966.495940202836,
+      "site_access_fraction": 0.703822711951555,
+      "site_longest_pass_s": 37253.637640614994
+    },
+    {
+      "argp_deg": 255.0,
+      "regional_mean_access_fraction": 0.7899791640197075,
+      "worst_max_gap_s": 14526.55552416197,
+      "site_access_fraction": 0.7761825408664389,
+      "site_longest_pass_s": 37744.862442636804
+    },
+    {
+      "argp_deg": 270.0,
+      "regional_mean_access_fraction": 0.8044360867729721,
+      "worst_max_gap_s": 10573.76213196211,
+      "site_access_fraction": 0.8031719708720327,
+      "site_longest_pass_s": 37761.63715308608
+    },
+    {
+      "argp_deg": 285.0,
+      "regional_mean_access_fraction": 0.7899792538448298,
+      "worst_max_gap_s": 14527.366694143391,
+      "site_access_fraction": 0.7986238743393193,
+      "site_longest_pass_s": 37229.3633120046
+    },
+    {
+      "argp_deg": 300.0,
+      "regional_mean_access_fraction": 0.7433333339171433,
+      "worst_max_gap_s": 20966.51686285943,
+      "site_access_fraction": 0.7700427175522127,
+      "site_longest_pass_s": 35746.3484445879
+    },
+    {
+      "argp_deg": 90.0,
+      "regional_mean_access_fraction": 0.004498889771837958,
+      "worst_max_gap_s": 604800.0,
+      "site_access_fraction": 0.006482427155087531,
+      "site_longest_pass_s": 562.6266466363631
+    }
+  ],
+  "perigee_sensitivity": [
+    {
+      "perigee_alt_km": 300.0,
+      "eccentricity": 0.7485808022901974,
+      "apogee_alt_km": 40067.25086072408,
+      "regional_mean_access_fraction": 0.8117309176117313,
+      "worst_max_gap_s": 10243.337128239102,
+      "site_access_fraction": 0.8104916701633396,
+      "raan_dot_deg_day": -0.15642657620054282
+    },
+    {
+      "perigee_alt_km": 600.0,
+      "eccentricity": 0.7372863710269664,
+      "apogee_alt_km": 39767.25086072409,
+      "regional_mean_access_fraction": 0.8044360867729721,
+      "worst_max_gap_s": 10573.76213196211,
+      "site_access_fraction": 0.8031719708720327,
+      "raan_dot_deg_day": -0.14513454363748832
+    },
+    {
+      "perigee_alt_km": 1000.0,
+      "eccentricity": 0.7222271293426581,
+      "apogee_alt_km": 39367.25086072408,
+      "regional_mean_access_fraction": 0.7946937945916339,
+      "worst_max_gap_s": 11012.139353182574,
+      "site_access_fraction": 0.7933890761456613,
+      "raan_dot_deg_day": -0.13210471472990604
+    },
+    {
+      "perigee_alt_km": 2000.0,
+      "eccentricity": 0.6845790251318875,
+      "apogee_alt_km": 38367.25086072408,
+      "regional_mean_access_fraction": 0.7702782758958661,
+      "worst_max_gap_s": 12101.626298878808,
+      "site_access_fraction": 0.7688254859222903,
+      "raan_dot_deg_day": -0.10708161358159765
+    }
+  ],
+  "dwell_comparison": {
+    "m1_anomaly_dwell_proxy_fraction": 0.8401,
+    "m3_site_access_fraction_1day_twobody": 0.803027,
+    "m5_site_access_fraction_14day_j2": 0.8028259942263719,
+    "m5_regional_point_weighted_mean_14day": 0.8049830965950023
+  },
+  "time_convergence": [
+    {
+      "dt_s": 120.0,
+      "site_access_fraction": 0.8033803428746973,
+      "site_longest_pass_s": 37735.37673773419,
+      "regional_worst_gap_s": 10572.916499692947
+    },
+    {
+      "dt_s": 60.0,
+      "site_access_fraction": 0.8033945352881586,
+      "site_longest_pass_s": 37736.15529355075,
+      "regional_worst_gap_s": 10572.641525455052
+    },
+    {
+      "dt_s": 30.0,
+      "site_access_fraction": 0.8033982298109505,
+      "site_longest_pass_s": 37736.33047772621,
+      "regional_worst_gap_s": 10572.514811402943
+    },
+    {
+      "dt_s": 15.0,
+      "site_access_fraction": 0.8033993511623133,
+      "site_longest_pass_s": 37736.41805609883,
+      "regional_worst_gap_s": 10572.46515186
+    }
+  ],
+  "spatial_convergence": [
+    {
+      "grid_step_deg": 5.0,
+      "n_points": 288,
+      "worst_max_gap_s": 10572.916499692947,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 90.0,
+      "point_weighted_mean_access_fraction": 0.8044359735849708
+    },
+    {
+      "grid_step_deg": 2.5,
+      "n_points": 1008,
+      "worst_max_gap_s": 10573.870351601916,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 87.5,
+      "point_weighted_mean_access_fraction": 0.8049683593530427
+    },
+    {
+      "grid_step_deg": 1.0,
+      "n_points": 5760,
+      "worst_max_gap_s": 10574.174879042286,
+      "worst_gap_point_lat_deg": 60.0,
+      "worst_gap_point_lon_deg": 88.0,
+      "point_weighted_mean_access_fraction": 0.80528674595243
+    }
+  ],
+  "independent_crosscheck": [
+    {
+      "label": "representative_site",
+      "lat_deg": 65.0,
+      "lon_deg": 40.0,
+      "max_elevation_error_deg": 7.105427357601002e-14
+    },
+    {
+      "label": "worst_regional_point",
+      "lat_deg": 60.0,
+      "lon_deg": 270.0,
+      "max_elevation_error_deg": 5.7127635955112055e-12
+    },
+    {
+      "label": "band_edge_75N",
+      "lat_deg": 75.0,
+      "lon_deg": 180.0,
+      "max_elevation_error_deg": 4.973799150320701e-14
+    }
+  ],
+  "baseline_orbit_elements": {
+    "a_km": 26561.762430362043,
+    "e": 0.7372863710269664,
+    "i_deg": 63.43494882292201,
+    "raan_deg": 0.0,
+    "argp_deg": 270.0,
+    "m0_deg": 180.0
+  },
+  "grid_definition": {
+    "lat_min_deg": 60.0,
+    "lat_max_deg": 75.0,
+    "lat_step_deg": 2.5,
+    "lon_step_deg": 2.5
+  },
+  "elevation_min_deg": 10.0,
+  "propagation_horizon_days": 14
+}

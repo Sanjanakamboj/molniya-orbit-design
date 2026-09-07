@@ -1,0 +1,84 @@
+==============================================================================
+M5 VERIFICATION REPORT
+==============================================================================
+
+--- Baseline regional coverage (14 days, dt=60s, 2.5 deg grid) ---
+  (computed in 4.11 s, 1008 grid points)
+  point-weighted mean access fraction = 0.804983
+  area-weighted mean access fraction  = 0.802354
+  min/max access fraction = 0.755310 / 0.826973
+  worst max gap = 10573.337 s (2.9370 h) at (np.float64(60.0), np.float64(270.0))
+  median max gap = 8245.774 s (2.2905 h)
+  best access point = (np.float64(75.0), np.float64(0.0))
+  wrote results/m5_grid_metrics.csv (1008 rows)
+
+  Representative site (65N,40E), 14 days: access_fraction=0.802826, max_gap=8611.132s (2.3920h), longest_pass=37807.892s (10.5022h), complete_passes=27, leading_partial=True, trailing_partial=True, peak_el=66.5496 deg
+
+--- Horizon stability (5 deg grid for speed, dt=120s) ---
+   1d: worst_gap=10572.817s (2.9369h) at (np.float64(60.0), np.float64(270.0))  ptmean=0.8044 areamean=0.8011
+   3d: worst_gap=10572.916s (2.9369h) at (np.float64(60.0), np.float64(90.0))  ptmean=0.8044 areamean=0.8011
+   7d: worst_gap=10573.762s (2.9372h) at (np.float64(60.0), np.float64(270.0))  ptmean=0.8044 areamean=0.8011
+  14d: worst_gap=10574.139s (2.9373h) at (np.float64(60.0), np.float64(270.0))  ptmean=0.8044 areamean=0.8011
+
+--- RAAN dependence: regional aggregate (should be ~invariant) vs site-specific (should NOT be) ---
+  RAAN=   0.0: regional ptmean=0.804436  site_access_fraction=0.803172  site_max_gap=8581.085s
+  RAAN=  60.0: regional ptmean=0.804436  site_access_fraction=0.814434  site_max_gap=8094.012s
+  RAAN= 120.0: regional ptmean=0.804436  site_access_fraction=0.783743  site_max_gap=9362.354s
+  RAAN= 180.0: regional ptmean=0.804436  site_access_fraction=0.803170  site_max_gap=8578.960s
+
+--- Minimum-elevation sensitivity (7 days, 5 deg grid) ---
+  el_min=  5.0 deg: regional_mean_access=0.827606  worst_gap=9089.224s  site_access=0.826673  site_longest_pass=38241.389s
+  el_min= 10.0 deg: regional_mean_access=0.804436  worst_gap=10573.762s  site_access=0.803172  site_longest_pass=37761.637s
+  el_min= 15.0 deg: regional_mean_access=0.776200  worst_gap=12506.333s  site_access=0.774582  site_longest_pass=37222.322s
+  el_min= 20.0 deg: regional_mean_access=0.740613  worst_gap=15210.883s  site_access=0.738780  site_longest_pass=36607.705s
+
+--- Inclination sensitivity (7 days, 5 deg grid, M4 J2 secular model) ---
+  i=  60.0000 deg: regional_mean_access=0.796715  worst_gap=11419.121s  site_access=0.795697  argp_dot= 0.040566 deg/day
+  i=  62.0000 deg: regional_mean_access=0.801450  worst_gap=10892.091s  site_access=0.800277  argp_dot= 0.016554 deg/day
+  i=  63.4349 deg: regional_mean_access=0.804436  worst_gap=10573.762s  site_access=0.803172  argp_dot= 0.000000 deg/day
+  i=  65.0000 deg: regional_mean_access=0.807356  worst_gap=10312.702s  site_access=0.806011  argp_dot=-0.017357 deg/day
+  i=  70.0000 deg: regional_mean_access=0.814754  worst_gap= 9707.576s  site_access=0.813202  argp_dot=-0.067358 deg/day
+
+--- Argument-of-perigee sensitivity (7 days, 5 deg grid) ---
+  argp= 240.0 deg: regional_mean_access=0.743333  worst_gap=20966.496s  site_access=0.703823  site_longest_pass=37253.638s
+  argp= 255.0 deg: regional_mean_access=0.789979  worst_gap=14526.556s  site_access=0.776183  site_longest_pass=37744.862s
+  argp= 270.0 deg: regional_mean_access=0.804436  worst_gap=10573.762s  site_access=0.803172  site_longest_pass=37761.637s
+  argp= 285.0 deg: regional_mean_access=0.789979  worst_gap=14527.367s  site_access=0.798624  site_longest_pass=37229.363s
+  argp= 300.0 deg: regional_mean_access=0.743333  worst_gap=20966.517s  site_access=0.770043  site_longest_pass=35746.348s
+  argp=  90.0 deg: regional_mean_access=0.004499  worst_gap=604800.000s  site_access=0.006482  site_longest_pass=562.627s
+
+--- Perigee-altitude sensitivity (a fixed at half-sidereal-day value, 7 days, 5 deg grid) ---
+  hp= 300.0 km (e=0.748581, ha= 40067.25 km): regional_mean_access=0.811731  worst_gap=10243.337s  site_access=0.810492  RAAN_dot=-0.156427 deg/day
+  hp= 600.0 km (e=0.737286, ha= 39767.25 km): regional_mean_access=0.804436  worst_gap=10573.762s  site_access=0.803172  RAAN_dot=-0.145135 deg/day
+  hp=1000.0 km (e=0.722227, ha= 39367.25 km): regional_mean_access=0.794694  worst_gap=11012.139s  site_access=0.793389  RAAN_dot=-0.132105 deg/day
+  hp=2000.0 km (e=0.684579, ha= 38367.25 km): regional_mean_access=0.770278  worst_gap=12101.626s  site_access=0.768825  RAAN_dot=-0.107082 deg/day
+
+--- Dwell-time cross-check ---
+  M1 anomaly-based dwell proxy (+/-60 deg true anomaly of apogee): 84.01% of orbital period
+  M3 single-site (65N,40E) access fraction, 1 sidereal day, two-body: 80.30%
+  M5 single-site (65N,40E) access fraction, 14 days, J2 secular: 80.28%
+  M5 regional point-weighted mean access fraction, 14 days: 80.50%
+
+--- Time-step convergence (representative site, 3 days) ---
+  dt=120.0s: site_access=0.803380  site_longest_pass=37735.377s  regional_worst_gap=10572.916s
+  dt= 60.0s: site_access=0.803395  site_longest_pass=37736.155s  regional_worst_gap=10572.642s
+  dt= 30.0s: site_access=0.803398  site_longest_pass=37736.330s  regional_worst_gap=10572.515s
+  dt= 15.0s: site_access=0.803399  site_longest_pass=37736.418s  regional_worst_gap=10572.465s
+
+--- Spatial-grid convergence (3 days, dt=120s) ---
+  grid= 5.0 deg (  288 pts, 0.13s): worst_gap=10572.916s at (np.float64(60.0), np.float64(90.0))  ptmean=0.804436
+  grid= 2.5 deg ( 1008 pts, 0.41s): worst_gap=10573.870s at (np.float64(60.0), np.float64(87.5))  ptmean=0.804968
+  grid= 1.0 deg ( 5760 pts, 2.49s): worst_gap=10574.175s at (np.float64(60.0), np.float64(88.0))  ptmean=0.805287
+
+--- Independent elevation cross-check (ENU vs triangle-geometry) ---
+  representative_site (65.0N,40.0E): max |elevation error| = 7.105e-14 deg
+  worst_regional_point (60.0N,270.0E): max |elevation error| = 5.713e-12 deg
+  band_edge_75N (75.0N,180.0E): max |elevation error| = 4.974e-14 deg
+
+wrote /Users/sanju/Projects/Aerospace Portfolio/Molniya orbit design/results/m5_baseline_regional_metrics.json
+wrote /Users/sanju/Projects/Aerospace Portfolio/Molniya orbit design/results/m5_sensitivity.csv
+wrote /Users/sanju/Projects/Aerospace Portfolio/Molniya orbit design/results/m5_convergence.csv
+
+==============================================================================
+END M5 VERIFICATION REPORT
+==============================================================================

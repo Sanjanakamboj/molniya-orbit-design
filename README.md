@@ -8,18 +8,18 @@ verified milestone by milestone.
 
 ## Status
 
-**Milestones 1–4 of 6 — complete.** M1 is the analytical design and
+**Milestones 1–5 of 6 — complete.** M1 is the analytical design and
 derivation; M2 implements and numerically verifies classical-element ↔
 Cartesian-state conversion and two-body propagation; M3 adds the
 ECI→ECEF transform, the Earth-fixed two-body ground track, and basic
 spherical-Earth topocentric access geometry; M4 adds a first-order
-secular J2 mean-element model, verifies the critical-inclination result
-numerically, and quantifies J2-driven ground-track drift over 1–14 days.
-**No coverage/revisit study, no constellation design, no link budget**
-yet — and **M3's access-geometry numbers (80.30% access fraction etc.)
-were computed with the two-body-only model; they do not yet include J2
-drift**, which M5 will need to account for. See [`DESIGN.md`](DESIGN.md)
-for the full derivation and M2/M3/M4 numerical results.
+secular J2 mean-element model and verifies the critical-inclination
+result numerically; M5 turns this into a regional high-latitude
+coverage/revisit trade study with six sensitivity axes. **A single
+Molniya spacecraft does not provide continuous coverage** — see below.
+**No constellation design, no link budget, no CI/portfolio packaging**
+yet. See [`DESIGN.md`](DESIGN.md) for the full derivation and M2–M5
+numerical results.
 
 ## Milestone roadmap
 
@@ -29,8 +29,45 @@ for the full derivation and M2/M3/M4 numerical results.
 | M2 | Element/state conversion + two-body propagation + apsis/period verification | ✅ complete |
 | M3 | ECI/ECEF transformation + Earth-fixed ground track + access geometry | ✅ complete |
 | M4 | First-order J2 secular propagation + critical-inclination verification | ✅ complete |
-| M5 | High-latitude dwell/coverage/revisit + parameter sensitivity | not started |
+| M5 | High-latitude dwell/coverage/revisit + parameter sensitivity | ✅ complete |
 | M6 | Independent validation + portfolio polish + CI/reproducibility audit | not started |
+
+## M5 verification highlights
+
+- **A single spacecraft does not provide continuous coverage:** the
+  baseline regional worst-case maximum gap is **2.937 h**, stable across
+  1–14 day horizons — even the best individual grid point (75°N, 0°E)
+  still has no access ~17% of the time
+- Baseline regional access fraction (14 days, 60–75°N): **80.50%**
+  point-weighted mean, 80.24% area-weighted mean — see
+  [`figures/m5_regional_max_gap.png`](figures/m5_regional_max_gap.png) and
+  [`figures/m5_access_fraction_map.png`](figures/m5_access_fraction_map.png)
+- **RAAN rotational invariance confirmed**: the full-longitude regional
+  aggregate access fraction is invariant to 6 decimal places under a
+  RAAN shift, while a fixed site's access fraction varies meaningfully
+  (78.4%–81.4%) — cleanly separating regional vs. site-specific
+  epoch dependence
+- **A genuine, non-obvious finding, reported honestly rather than
+  smoothed over**: over a 7-day horizon, access fraction actually
+  *increases* and worst gap *decreases* monotonically from i=60° to
+  i=70° — the critical inclination does **not** maximize short-horizon
+  access. Its real benefit is long-horizon ω stability (frozen
+  indefinitely vs. measurable drift off-critical), not a short-horizon
+  access-fraction maximum — see
+  [`figures/m5_sensitivity_trade.png`](figures/m5_sensitivity_trade.png)
+- ω=90° (southern-apogee) control case fails catastrophically as
+  required: regional mean access collapses to 0.45%, with the worst
+  point seeing **zero access for the entire 7-day window**
+- Lower perigee altitude (→ higher eccentricity, fixed period) genuinely
+  increases high-latitude access (81.2% at 300 km vs. 77.0% at 2000 km),
+  confirmed by computation, not assumed
+- Independent triangle-geometry elevation cross-check: max error
+  1.6×10⁻¹² deg (double-precision floor) — see
+  [`figures/m5_representative_site_timeline.png`](figures/m5_representative_site_timeline.png)
+
+Full numbers, the M3 boundary-pass fix, the M1/M3/M5 dwell-proxy
+comparison, and one documented figure-layout fix are in
+[`DESIGN.md` — Milestone 5](DESIGN.md#milestone-5--high-latitude-coverage-dwellrevisit-analysis-and-parameter-sensitivity).
 
 ## M4 verification highlights
 
@@ -119,14 +156,16 @@ verification plan: [`DESIGN.md`](DESIGN.md).
 DESIGN.md              analytical design & verification plan
 src/molniya_design/    Python package (constants, elements, twobody,
                         propagation, frames, groundtrack, access,
-                        j2, j2_cartesian)
-tests/                 pytest suite (98 tests: M1 + M2 + M3 + M4)
+                        j2, j2_cartesian, coverage)
+tests/                 pytest suite (117 tests: M1 + M2 + M3 + M4 + M5)
 scripts/               verification-report / figure-generation scripts
 figures/               generated figures (M2 orbit/conservation; M3
                         ground track / access / range-vs-elevation;
                         M4 J2 rate sensitivity / ground-track comparison
-                        / element drift)
-results/               generated numeric verification reports
+                        / element drift; M5 regional max-gap / access-
+                        fraction maps, sensitivity trade, site timeline)
+results/               generated numeric verification reports + M5
+                        machine-readable JSON/CSV results
 ```
 
 ## Development

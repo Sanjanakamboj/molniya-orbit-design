@@ -111,6 +111,64 @@ def coe_to_rv(
     return r_eci, v_eci
 
 
+def coe_to_r_array(
+    a_km: float,
+    e: float,
+    i_deg: float,
+    raan_deg: np.ndarray,
+    argp_deg: np.ndarray,
+    nu_deg: np.ndarray,
+    mu: float = MU_EARTH,
+) -> np.ndarray:
+    """Vectorized classical elements -> ECI position, for a fixed (a, e,
+    i) and **arrays** of (possibly time-varying) RAAN/argp/true-anomaly —
+    an M5 performance primitive for regional-grid coverage, where the M4
+    secular model gives RAAN(t) and argp(t) that both vary sample-to-
+    sample (unlike M2's fixed-element case, where a single rotation
+    matrix sufficed).
+
+    Builds one 3x3 rotation matrix per sample (batched via `np.matmul`
+    broadcasting) rather than looping in Python. Returns only position
+    (N, 3) km — velocity is not needed by any M5 consumer and is omitted
+    to keep this a minimal, fast primitive.
+
+    Cross-checked against the scalar :func:`coe_to_rv` at multiple
+    samples (see `tests/test_coverage.py`).
+    """
+    raan = np.radians(np.asarray(raan_deg, dtype=float))
+    argp = np.radians(np.asarray(argp_deg, dtype=float))
+    nu = np.radians(np.asarray(nu_deg, dtype=float))
+    i = np.radians(i_deg)
+
+    p = a_km * (1.0 - e**2)
+    cos_nu, sin_nu = np.cos(nu), np.sin(nu)
+    r_mag = p / (1.0 + e * cos_nu)
+    r_pqw = np.stack([r_mag * cos_nu, r_mag * sin_nu, np.zeros_like(r_mag)], axis=-1)  # (N,3)
+
+    n = raan.shape[0]
+    zeros, ones = np.zeros(n), np.ones(n)
+    cR, sR = np.cos(raan), np.sin(raan)
+    cw, sw = np.cos(argp), np.sin(argp)
+
+    R3_raan = np.stack(
+        [np.stack([cR, -sR, zeros], axis=-1),
+         np.stack([sR, cR, zeros], axis=-1),
+         np.stack([zeros, zeros, ones], axis=-1)],
+        axis=-2,
+    )  # (N,3,3)
+    R3_argp = np.stack(
+        [np.stack([cw, -sw, zeros], axis=-1),
+         np.stack([sw, cw, zeros], axis=-1),
+         np.stack([zeros, zeros, ones], axis=-1)],
+        axis=-2,
+    )  # (N,3,3)
+    R1_i = _rot1(i)  # (3,3), broadcasts against the (N,3,3) matmuls below
+
+    R = R3_raan @ R1_i @ R3_argp  # (N,3,3)
+    r_eci = np.einsum("nij,nj->ni", R, r_pqw)  # (N,3)
+    return r_eci
+
+
 def rv_to_coe(
     r_eci: np.ndarray, v_eci: np.ndarray, mu: float = MU_EARTH
 ) -> dict:

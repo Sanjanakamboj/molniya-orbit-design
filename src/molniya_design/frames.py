@@ -99,6 +99,31 @@ def ecef_to_geocentric_latlon(r_ecef: np.ndarray) -> tuple[float, float]:
     return lat, lon
 
 
+def eci_array_to_ecef_array(
+    r_eci_array: np.ndarray, t_s_array: np.ndarray, theta_g0_rad: float = 0.0
+) -> np.ndarray:
+    """Vectorized :func:`eci_to_ecef`: rotate an (N,3) array of ECI
+    positions to ECEF at the corresponding (N,) array of times — an M5
+    performance primitive (regional-grid coverage needs the satellite
+    trajectory rotated at thousands of samples). Builds one batched
+    rotation-matrix array via `np.matmul`/`einsum` rather than looping in
+    Python. Algebraically identical to calling :func:`eci_to_ecef` once
+    per sample (cross-checked in tests)."""
+    r_eci_array = np.asarray(r_eci_array, dtype=float)  # (N,3)
+    t_s_array = np.asarray(t_s_array, dtype=float)  # (N,)
+    theta = (theta_g0_rad + EARTH_ROTATION_RATE_RAD_S * t_s_array) % (2.0 * np.pi)
+
+    c, s = np.cos(-theta), np.sin(-theta)
+    zeros, ones = np.zeros_like(theta), np.ones_like(theta)
+    R = np.stack(
+        [np.stack([c, -s, zeros], axis=-1),
+         np.stack([s, c, zeros], axis=-1),
+         np.stack([zeros, zeros, ones], axis=-1)],
+        axis=-2,
+    )  # (N,3,3), each R3(-theta_k)
+    return np.einsum("nij,nj->ni", R, r_eci_array)
+
+
 def geocentric_latlon_to_ecef(
     lat_deg: float, lon_deg: float, r_km: float = R_EARTH
 ) -> np.ndarray:
