@@ -544,7 +544,7 @@ J2 secular-theory accuracy, not measurement uncertainty.
 - **M2** — Element/state conversion + two-body propagation + apsis/period
   numerical verification (§10.A–F). ✅ complete — see §M2 below.
 - **M3** — ECI/ECEF transformation + Earth-fixed ground track + access
-  geometry (§10.J, K, L, N).
+  geometry (§10.J, K, L, N). ✅ complete — see §M3 below.
 - **M4** — First-order J2 secular propagation + critical-inclination
   verification (§10.G, H, I).
 - **M5** — High-latitude dwell/coverage/revisit + parameter sensitivity
@@ -552,7 +552,7 @@ J2 secular-theory accuracy, not measurement uncertainty.
 - **M6** — Independent validation + portfolio polish + CI/reproducibility
   audit.
 
-M3 is **not** started as part of this milestone.
+M4 is **not** started as part of this milestone.
 
 ---
 
@@ -783,3 +783,289 @@ access/elevation, coverage/revisit metric, J2 acceleration, secular J2
 propagation, numerical RAAN regression, or numerical critical-inclination
 verification was implemented in M2 — all remain explicitly deferred to
 M3/M4/M5 per the roadmap.
+
+---
+
+# Milestone 3 — ECI/ECEF Transformation + Ground Track + Basic Access Geometry
+
+**Status:** M3 complete. Implements the ECI→ECEF transform under a
+constant-rate Earth-rotation model, geocentric spherical lat/lon,
+the two-body (no-J2) Earth-fixed ground track, and basic spherical-Earth
+topocentric access geometry (range/azimuth/elevation, access intervals,
+one-day access metrics), each cross-checked against an independent method
+and a timestep convergence study. **No J2, no secular RAAN/ω drift, no
+constellation/coverage optimization, no link budget, no geodetic (WGS-84)
+station coordinates** — all explicitly out of scope until M4/M5.
+
+## M3.0 Pre-flight verification
+
+Before writing any M3 code, the M2 headline values were reproduced from
+production code (not copied) and the M2 report/figures were regenerated
+and diffed byte-for-byte against the committed artifacts:
+
+| Quantity | M2 committed value | Recomputed (pre-M3) | Match |
+|---|---|---|---|
+| Period | 43082.045250 s | 43082.045250 s | ✓ |
+| Perigee altitude | 600.000 km | 600.000 km | ✓ |
+| Apogee altitude | 39767.251 km | 39767.251 km | ✓ |
+| vp | 9.961732 km/s | 9.961732 km/s | ✓ |
+| va | 1.506420 km/s | 1.506420 km/s | ✓ |
+| Apogee latitude (ω=270°) | +63.434949° | +63.434949° | ✓ |
+
+`scripts/m2_verification_report.py` output and both M2 figure PNGs
+(`m2_orbit_geometry.png`, `m2_conservation_and_apsides.png`) were
+regenerated and found **bit-for-bit identical** to the committed versions
+(`diff` on the report text; identical file checksums on the figures) —
+zero numerical drift from M2. `pytest -W error` on the pre-M3 tree passed
+34/34.
+
+## M3.1 Earth-rotation / frame model
+
+A **constant-rate** Earth rotation is used (`frames.py`):
+
+    theta_G(t) = theta_G0 + omega_E * t,   theta_G0 = 0 at t = 0
+
+- `theta_G0 = 0` at `t = 0` is an **engineering reference epoch**, not a
+  real UTC/GMST epoch — it only fixes ECEF and ECI to be coincident at the
+  start of the propagated timeline (consistent with DESIGN.md §0.4's
+  M1 caveat that absolute longitude is convention-only until a real epoch
+  is chosen — still true here; M3 only adds a *self-consistent* Earth
+  rotation, not a real-world one).
+- `omega_E = 2*pi / SIDEREAL_DAY_S`, i.e. the **same** sidereal rate
+  already implicit in the M1 half-sidereal-day period design choice —
+  confirmed by `omega_E * SIDEREAL_DAY_S = 2*pi` and, as a direct
+  consequence, `omega_E * T_baseline = pi` exactly (both verified
+  numerically to double-precision, see §M3.3).
+
+**Sign convention (ECI→ECEF):** the ECEF frame rotates **eastward**
+(counterclockwise viewed from +Z/north) relative to ECI, matching Earth's
+actual prograde rotation:
+
+    r_ECI  = R3(+theta_G) @ r_ECEF
+    r_ECEF = R3(-theta_G) @ r_ECI
+
+using the same active-rotation `R3` convention as `elements.py`. This
+sign is documented in `frames.py`'s module docstring, verified at
+`theta=0` (identity), round-trip tested, and tested for right-handedness
+(`det R = +1`, `R^T R = I`) at multiple times.
+
+## M3.2 Geocentric latitude/longitude
+
+    lat = asin(z / r)                    [-90, +90] deg
+    lon = atan2(y, x), wrapped to [-180, +180) deg
+
+Explicitly **geocentric** latitude on a **spherical** Earth — not WGS-84
+geodetic latitude (unchanged M1 limitation, §11). The inverse
+(`geocentric_latlon_to_ecef`) is implemented and round-trip tested,
+including explicit longitude-wraparound cases (±180° boundary, values
+outside [-180,360)).
+
+## M3.3 Ground-track results (two-body, no J2)
+
+Propagated the M2 baseline for one full sidereal day (≈2.0055 Molniya
+revolutions, `SIDEREAL_DAY_S = 86164.0905` s) and transformed every
+sampled ECI state to ECEF/geocentric lat-lon. Apsides (from M2's
+`find_apsides`) were also converted to Earth-fixed lat/lon:
+
+| Apsis | t (s) | Latitude (deg) | Longitude (deg) | r (km) |
+|---|---|---|---|---|
+| Apogee 0 | 0.000 | +63.43495 | +90.00000 | 46145.388 |
+| Perigee 0 | 21541.023 | -63.43495 | -180.00000 | 6978.137 |
+| Apogee 1 | 43082.045 | +63.43495 | -90.00000 | 46145.388 |
+| Perigee 1 | 64623.068 | -63.43495 | 0.00000 | 6978.137 |
+| Apogee 2 | 86164.090 | +63.43495 | +90.00000 | 46145.388 |
+
+**Successive-apogee longitude separation:**
+
+- Apogee 0 → 1: **-180.00000000°** (expected: exactly ±180°, since
+  `omega_E * T = pi` exactly by construction)
+- Apogee 1 → 2: **-180.00000000°**
+
+**One-sidereal-day repeat error** (apogee 0 vs. apogee 2, i.e. after
+exactly 2 baseline periods = 1 sidereal day): longitude error **1.17×10⁻¹⁰
+deg**, latitude match to double-precision. This numerically confirms the
+DESIGN.md §8 prediction that the ground track repeats every sidereal day
+under the two-body, no-J2 baseline, and that consecutive apogee passes
+alternate between two longitude sectors 180° apart — the classic Molniya
+"figure-eight-like" two-lobe pattern, quantified rather than only
+visually inspected (see `figures/m3_ground_track.png`, §M3.7).
+
+All apogees sit at the same latitude (+63.43495°, matching M1/M2's
+critical-inclination/ω=270° prediction) and all perigees at -63.43495°,
+confirming the M1 §4 orientation claim survives the Earth-fixed transform
+unchanged (latitude is frame-independent of Earth rotation about Z, as
+documented in `propagation.geocentric_latitude_deg` since M2).
+
+## M3.4 Representative site and access geometry
+
+Site (DESIGN.md §7): **lat = 65° N, lon = 40° E**, minimum elevation
+**10°**, spherical Earth radius `R_EARTH`.
+
+**ENU/azimuth/elevation formulas** (`access.py`):
+
+    r_site  = R_E [cos(lat)cos(lon), cos(lat)sin(lon), sin(lat)]
+    e_east  = [-sin(lon), cos(lon), 0]
+    e_north = [-sin(lat)cos(lon), -sin(lat)sin(lon), cos(lat)]
+    e_up    = [ cos(lat)cos(lon),  cos(lat)sin(lon), sin(lat)]
+
+    rho = r_sat_ECEF - r_site
+    range     = |rho|
+    elevation = asin((rho . e_up) / range)
+    azimuth   = atan2(rho . e_east, rho . e_north) mod 360   (0=N, 90=E)
+
+No atmospheric refraction. `(e_east, e_north, e_up)` confirmed orthonormal
+and right-handed (`e_east × e_north = e_up`) at multiple lat/lon (test K).
+
+## M3.5 Access-interval extraction and one-day metrics
+
+Access intervals (elevation ≥ 10°) are extracted from a densely sampled
+elevation time series with **linearly interpolated threshold crossings**
+(not raw-sample counting) and a **local parabolic refinement of the peak
+elevation/time** within each interval. Validated against a synthetic
+sinusoid with a closed-form crossing/peak solution (test P): crossing
+times recovered to ≤0.01 s, peak elevation to ≤0.01°, on a very finely
+sampled synthetic signal (dt=0.005 s) — confirming the extraction
+algorithm itself is correct before applying it to the real (coarser)
+propagated trajectory.
+
+**One-sidereal-day access metrics** (dt=15 s ground track):
+
+| Metric | Value |
+|---|---|
+| Number of passes | 3 (see caveat below) |
+| Total access time | 69192.106 s (19.2200 h) |
+| Access fraction | **0.803027** (80.30%) |
+| Longest pass | 31471.372 s (8.7420 h) |
+| Maximum no-access gap | 8551.051 s (2.3753 h) |
+| Peak elevation (best pass) | 65.4781° |
+
+**Pass-count caveat (documented, not a bug):** the reported "3 passes"
+includes one continuous high-elevation dwell that is **split into two
+fragments** ("pass 0": 0.00-18823.85 s, and "pass 2": 67267.21-86164.09 s)
+purely because the analysis window `[0, sidereal_day]` cuts through the
+middle of that physically continuous access run — the ground track
+exactly repeats after one sidereal day (§M3.3), so pass 0 and pass 2 are
+literally the same recurring apogee dwell viewed at the two ends of an
+arbitrary window. A window-independent count would report 2 physically
+distinct passes per sidereal day (consistent with ~2 Molniya revolutions/
+day). This is a reporting-window artifact of choosing `[0, sidereal_day]`
+as the analysis interval, not a geometry or algorithm defect, and is
+retained here (rather than silently patched) because M5 will need to make
+an explicit, documented choice about window boundaries for revisit-gap
+statistics — this M3 result flags exactly why that choice matters.
+
+The 80.3% one-day access fraction is in the same ballpark as, but not
+identical to, the M1 §6 anomaly-based dwell proxy (84.0% of the orbital
+period within ±60° true anomaly of apogee) — expected, since the two are
+different metrics (a fixed-site elevation threshold vs. a pure orbital
+anomaly window) that should be of comparable magnitude for a mission
+designed around northern apogee dwell, without being numerically equal.
+
+## M3.6 Independent access verification
+
+**Independent elevation cross-check** (`elevation_independent_check`):
+uses the Earth-center/site/satellite triangle geometry (geocentric angle
+psi = arccos(r_site_hat · r_sat_hat), then closed-form
+`tan(el) = (cos psi - R_E/r_sat) / sin psi` and law-of-cosines range) —
+**no ENU basis, no dot products against e_east/e_north/e_up** — a
+genuinely separate derivation path from the ENU-projection method.
+
+Compared against the ENU method over the full one-sidereal-day, dt=15 s
+trajectory (5745 samples):
+
+- Max |elevation error| = **1.563×10⁻¹³ deg**
+- Max |range error| = **1.455×10⁻¹¹ km**
+
+Both at the double-precision floor — the two independent methods agree
+to numerical precision, confirming the ENU-based access geometry.
+
+**Timestep convergence study** (one sidereal day, dt = 120/60/15 s):
+
+| dt (s) | Samples | Total access (s) | Max gap (s) | Longest pass (s) | Passes |
+|---|---|---|---|---|---|
+| 120.0 | 719 | 69190.499 | 8552.215 | 31470.980 | 3 |
+| 60.0 | 1437 | 69191.780 | 8551.195 | 31471.249 | 3 |
+| 15.0 | 5745 | 69192.106 | 8551.051 | 31471.372 | 3 |
+
+Deltas relative to the finest (dt=15 s) setting:
+
+| dt (s) | \|Δ total access\| (s) | \|Δ max gap\| (s) | \|Δ longest pass\| (s) |
+|---|---|---|---|
+| 120.0 | 1.6070 | 1.1640 | 0.3926 |
+| 60.0 | 0.3252 | 0.1440 | 0.1235 |
+| 15.0 | 0 (reference) | 0 | 0 |
+
+Every metric shrinks monotonically (roughly by a factor of ~5 per 2×
+timestep halving from 120→60 s, and again 60→15 s) as the sampling
+interval is refined — genuine numerical convergence of the
+linear-interpolation/parabolic-refinement scheme, not merely asserted.
+Pass count (3, including the window-split artifact of §M3.5) is stable
+across all three timesteps.
+
+## M3.7 Figures
+
+- [`figures/m3_ground_track.png`](figures/m3_ground_track.png) — two-body
+  + spherical-Earth-rotation ground track over one sidereal day, with
+  apogee/perigee markers and the representative site, explicitly labeled
+  "no J2." Longitude wraparound is handled by splitting the plotted
+  polyline wherever consecutive samples jump by more than 180°, so no
+  fake line is drawn across the map.
+- [`figures/m3_access_vs_time.png`](figures/m3_access_vs_time.png) —
+  elevation vs. time over one sidereal day, the 10° threshold, shaded
+  access intervals, and apogee-time markers, explicitly labeled as
+  geometric elevation only (not a communications/link result).
+- [`figures/m3_range_vs_elevation.png`](figures/m3_range_vs_elevation.png)
+  — supporting figure: range vs. elevation colored by time, showing the
+  geometric range/elevation relationship through each pass.
+
+All three figures were visually inspected for clipping, overlapping
+annotations, fake wraparound lines, unreadable legends, wrong units, and
+misleading aspect ratio. **One genuine issue was found and fixed during
+this inspection** (§M3.8).
+
+## M3.8 Genuine discrepancy found and fixed
+
+**What was found:** the first version of `m3_access_vs_time.png` drew
+each access-interval shaded region with `axvspan(..., alpha=0.15)` inside
+a loop, then drew the *first* interval a second time (with a `label=`) to
+create a legend entry. Because matplotlib alpha-blends overlapping
+patches, the first (legend-labeled) interval rendered visibly **darker**
+than the other two identical-alpha intervals — a misleading visual
+artifact that could be misread as a different (e.g. higher-confidence or
+different-type) access interval.
+
+**Fix:** the plotting loop no longer redraws any interval for the legend;
+a `matplotlib.patches.Patch` / `Line2D` proxy artist is built solely for
+the legend entry and never added to the axes. Re-inspected the
+regenerated figure: all three shaded intervals now render with identical,
+consistent shading.
+
+This was a documentation/figure-generation bug only — it did not affect
+any numerical result, test, or the underlying access-interval data.
+
+## M3.9 Test suite
+
+`tests/test_frames_access.py` implements checklist items A-T (38 new
+tests). One test tolerance was deliberately loosened with an explicit
+comment (test L, overhead elevation): `arcsin` is ill-conditioned near
+±1 (derivative → infinity), so a ~1e-16 floating-point error in
+`rho_up/range` at exactly-overhead amplifies to ~1e-6 deg in the computed
+elevation — an expected numerical effect of the formula, not a geometry
+bug; the test tolerance (1e-4 deg) remains far tighter than any physical
+requirement. All M1/M2 regression tests continue to pass unchanged
+(test S re-verifies M1/M2 apsis radii/velocities through the production
+code path in the M3 tree).
+
+**Total: 72 tests pass under `pytest -W error`, zero warnings**
+(34 from M1/M2 + 38 new M3 tests).
+
+## M3.10 Scope guard confirmation
+
+No J2 acceleration, secular J2 propagation, numerical nodal/argument-of-
+perigee regression, long-horizon J2 ground-track drift, constellation
+design, multi-satellite coverage, RF link budget, atmospheric refraction,
+antenna gain, oblate-Earth visibility, geodetic WGS-84 station
+coordinates, or stationkeeping was implemented in M3 — all remain
+explicitly deferred to M4/M5 per the roadmap. This module chain is
+strictly: two-body ECI propagation (M2, unchanged) → ECEF → geocentric
+ground track → basic spherical-Earth access geometry.

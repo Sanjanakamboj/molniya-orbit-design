@@ -86,3 +86,18 @@ M1_VP_KM_S = np.sqrt(MU_EARTH * (2.0 / _RP_KM - 1.0 / _A_KM))
 M1_VA_KM_S = np.sqrt(MU_EARTH * (2.0 / _RA_KM - 1.0 / _A_KM))
 M1_SPECIFIC_ENERGY_KM2_S2 = -MU_EARTH / (2.0 * _A_KM)
 M1_SPECIFIC_ANG_MOMENTUM_KM2_S = np.sqrt(MU_EARTH * M1_SEMILATUS_RECTUM_KM)
+
+# ---------------------------------------------------------------------------
+# M1 representative high-latitude ground site and access geometry (DESIGN.md §7)
+# ---------------------------------------------------------------------------
+
+SITE_LAT_DEG = 65.0
+"""Representative target-site geocentric latitude, deg N (DESIGN.md §7)."""
+
+SITE_LON_DEG = 40.0
+"""Representative target-site longitude, deg E (DESIGN.md §7; provisional,
+tied to the M3 engineering-reference epoch, not a real ground-station
+longitude)."""
+
+MIN_ELEVATION_DEG = 10.0
+"""Minimum elevation angle for basic access geometry, deg (DESIGN.md §7)."""

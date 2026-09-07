@@ -8,15 +8,15 @@ verified milestone by milestone.
 
 ## Status
 
-**Milestones 1–2 of 6 — complete.** M1 is the analytical design and
+**Milestones 1–3 of 6 — complete.** M1 is the analytical design and
 derivation; M2 implements and numerically verifies classical-element ↔
-Cartesian-state conversion and two-body propagation against the M1
-baseline (period, apsis radii/velocities, conservation, an independent
-Kepler time-of-flight cross-check, and the northern-apogee orientation
-claim). No Earth-fixed ground track, J2, or coverage code exists yet. See
-[`DESIGN.md`](DESIGN.md) for the full derivation, baseline element set,
-M2 numerical results, and the verification plan later milestones are held
-to.
+Cartesian-state conversion and two-body propagation; M3 adds the
+ECI→ECEF transform, the Earth-fixed two-body ground track, and basic
+spherical-Earth topocentric access geometry (range/azimuth/elevation,
+access intervals, one-day access metrics), each independently
+cross-checked. **No J2, no secular drift, no coverage optimization, no
+link budget** yet. See [`DESIGN.md`](DESIGN.md) for the full derivation,
+baseline element set, and M2/M3 numerical results.
 
 ## Milestone roadmap
 
@@ -24,10 +24,34 @@ to.
 |---|---|---|
 | M1 | Analytical design + verification plan | ✅ complete |
 | M2 | Element/state conversion + two-body propagation + apsis/period verification | ✅ complete |
-| M3 | ECI/ECEF transformation + Earth-fixed ground track + access geometry | not started |
+| M3 | ECI/ECEF transformation + Earth-fixed ground track + access geometry | ✅ complete |
 | M4 | First-order J2 secular propagation + critical-inclination verification | not started |
 | M5 | High-latitude dwell/coverage/revisit + parameter sensitivity | not started |
 | M6 | Independent validation + portfolio polish + CI/reproducibility audit | not started |
+
+## M3 verification highlights
+
+- Ground track (two-body, no J2) over one sidereal day; apogee latitude
+  **+63.434949°** at every apogee, confirming the M1/M2 northern-apogee
+  orientation survives the Earth-fixed transform unchanged
+- Successive-apogee longitude separation: exactly **-180.00000000°**
+  (since `omega_E * T = pi` by construction) — the classic two-lobe
+  Molniya ground-track pattern, quantified numerically
+- One-sidereal-day ground-track repeat error: **1.17×10⁻¹⁰ deg**
+- Representative site (65°N, 40°E, 10° min elevation) one-day access:
+  **80.30% access fraction**, longest pass **8.74 h**, max gap **2.38 h**,
+  peak elevation **65.48°**
+- Independent triangle-geometry elevation cross-check vs. the ENU-based
+  method: max error **1.6×10⁻¹³ deg** (double-precision floor)
+- Timestep convergence (120/60/15 s): every access metric shrinks
+  monotonically as sampling is refined — see
+  [`figures/m3_ground_track.png`](figures/m3_ground_track.png),
+  [`figures/m3_access_vs_time.png`](figures/m3_access_vs_time.png),
+  [`figures/m3_range_vs_elevation.png`](figures/m3_range_vs_elevation.png)
+
+Full numbers, the pass-count windowing caveat, and one documented
+figure-rendering fix (not a numerical bug) are in
+[`DESIGN.md` — Milestone 3](DESIGN.md#milestone-3--ecivecef-transformation--ground-track--basic-access-geometry).
 
 ## M2 verification highlights
 
@@ -65,11 +89,13 @@ verification plan: [`DESIGN.md`](DESIGN.md).
 
 ```
 DESIGN.md              analytical design & verification plan
-src/molniya_design/    Python package (placeholder in M1)
-tests/                 pytest suite
-scripts/               analysis/plotting scripts (added from M2 onward)
-figures/               generated figures (added from M3 onward)
-results/               generated numeric results (added from M2 onward)
+src/molniya_design/    Python package (constants, elements, twobody,
+                        propagation, frames, groundtrack, access)
+tests/                 pytest suite (72 tests: M1 + M2 + M3)
+scripts/               verification-report / figure-generation scripts
+figures/               generated figures (M2 orbit/conservation; M3
+                        ground track / access / range-vs-elevation)
+results/               generated numeric verification reports
 ```
 
 ## Development

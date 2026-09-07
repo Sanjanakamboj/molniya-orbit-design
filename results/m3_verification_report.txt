@@ -1,0 +1,52 @@
+==============================================================================
+M3 VERIFICATION REPORT
+==============================================================================
+
+Earth rotation rate omega_E = 7.2921158579e-05 rad/s
+omega_E * T (baseline period) = 180.0000000000 deg (expect 180)
+omega_E * sidereal_day = 360.0000000000 deg (expect 360)
+
+Apsis ground points over 2.05 periods:
+  t=       0.000 s  apogee   lat=  63.43495 deg  lon=  90.00000 deg  r=46145.388 km
+  t=   21541.023 s  perigee  lat= -63.43495 deg  lon=-180.00000 deg  r=6978.137 km
+  t=   43082.045 s  apogee   lat=  63.43495 deg  lon= -90.00000 deg  r=46145.388 km
+  t=   64623.068 s  perigee  lat= -63.43495 deg  lon=   0.00000 deg  r=6978.137 km
+  t=   86164.090 s  apogee   lat=  63.43495 deg  lon=  90.00000 deg  r=46145.388 km
+
+Successive apogee longitude separations:
+  apogee[0] -> apogee[1]: -180.00000000 deg (expect ~180 or ~-180)
+  apogee[1] -> apogee[2]: -180.00000000 deg (expect ~180 or ~-180)
+
+One-sidereal-day repeat error (apogee[0] vs apogee[2]): 1.173e-10 deg
+  time diff = 86164.090500 s vs sidereal day 86164.090500 s
+
+Representative site: lat=65.0 deg N, lon=40.0 deg E, min elevation=10.0 deg
+
+Access geometry over one sidereal day (dt=15.0s, 5745 samples):
+  number of passes       = 3
+  total access time      = 69192.106 s (19.2200 h)
+  access fraction        = 0.803027
+  longest pass           = 31471.372 s (8.7420 h)
+  max no-access gap      = 8551.051 s (2.3753 h)
+  peak elevation (best pass) = 65.4781 deg
+    pass 0: start=      0.00s end=  18823.85s dur=18823.85s peak_el= 65.478 deg @ t=      0.00s
+    pass 1: start=  27244.79s end=  58716.16s dur=31471.37s peak_el= 37.245 deg @ t=  43088.78s
+    pass 2: start=  67267.21s end=  86164.09s dur=18896.88s peak_el= 65.478 deg @ t=  86137.35s
+
+Independent elevation cross-check (ENU vs triangle-geometry), over 5745 samples:
+  max |elevation error| = 1.563e-13 deg
+  max |range error|     = 1.455e-11 km
+
+Timestep convergence study (one sidereal day):
+  dt= 120.0s  n_samples=   719  total_access= 69190.499s  max_gap=  8552.215s  longest_pass= 31470.980s  n_passes=3
+  dt=  60.0s  n_samples=  1437  total_access= 69191.780s  max_gap=  8551.195s  longest_pass= 31471.249s  n_passes=3
+  dt=  15.0s  n_samples=  5745  total_access= 69192.106s  max_gap=  8551.051s  longest_pass= 31471.372s  n_passes=3
+
+  Convergence deltas (|value(dt) - value(15s)|):
+    dt= 120.0s  d_total=1.6070s  d_gap=1.1640s  d_longest=0.3926s
+    dt=  60.0s  d_total=0.3252s  d_gap=0.1440s  d_longest=0.1235s
+    dt=  15.0s  d_total=0.0000s  d_gap=0.0000s  d_longest=0.0000s
+
+==============================================================================
+END M3 VERIFICATION REPORT
+==============================================================================
