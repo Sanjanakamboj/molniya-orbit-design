@@ -111,13 +111,21 @@ def figure_regional_maps():
     cbar = fig.colorbar(pcm, ax=ax)
     cbar.set_label("Access fraction [%]")
     ax.scatter([SITE_LON_DEG], [SITE_LAT_DEG], color="red", marker="*", s=220,
-               edgecolor="black", linewidth=0.6, zorder=5, label=f"Representative site ({SITE_LAT_DEG:.0f}N,{SITE_LON_DEG:.0f}E)")
+               edgecolor="black", linewidth=0.6, zorder=5, clip_on=False,
+               label=f"Representative site ({SITE_LAT_DEG:.0f}N,{SITE_LON_DEG:.0f}E)")
     ax.scatter([best_lon], [best_lat], color="lime", marker="P", s=140,
-               edgecolor="black", linewidth=0.8, zorder=5, label=f"Best point ({best_lat:.1f}N,{best_lon:.1f}E)")
+               edgecolor="black", linewidth=0.8, zorder=5, clip_on=False,
+               label=f"Best point ({best_lat:.1f}N,{best_lon:.1f}E)")
     ax.set_xlabel("Longitude [deg]")
     ax.set_ylabel("Latitude [deg N]")
-    ax.set_xlim(0, 360)
-    ax.set_ylim(lat_edges[0], lat_edges[-1])
+    # small margin beyond the strict data/grid range so a marker sitting
+    # exactly at a grid corner (e.g. the best point at 75N,0E) renders
+    # fully rather than sitting flush against the axes edge -- display
+    # only, does not change the plotted data
+    x_pad = (lon_edges[-1] - lon_edges[0]) * 0.01
+    y_pad = (lat_edges[-1] - lat_edges[0]) * 0.03
+    ax.set_xlim(0 - x_pad, 360 + x_pad)
+    ax.set_ylim(lat_edges[0] - y_pad, lat_edges[-1] + y_pad)
     ax.set_title(
         "M5: Regional geometric access fraction, 60-75N, 14-day horizon\n"
         "Elevation >= 10 deg line-of-sight access (NOT the M1 anomaly dwell proxy, NOT RF coverage)"

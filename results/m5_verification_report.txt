@@ -3,7 +3,7 @@ M5 VERIFICATION REPORT
 ==============================================================================
 
 --- Baseline regional coverage (14 days, dt=60s, 2.5 deg grid) ---
-  (computed in 4.11 s, 1008 grid points)
+  (computed in 1.22 s, 1008 grid points)
   point-weighted mean access fraction = 0.804983
   area-weighted mean access fraction  = 0.802354
   min/max access fraction = 0.755310 / 0.826973
@@ -66,18 +66,18 @@ M5 VERIFICATION REPORT
   dt= 15.0s: site_access=0.803399  site_longest_pass=37736.418s  regional_worst_gap=10572.465s
 
 --- Spatial-grid convergence (3 days, dt=120s) ---
-  grid= 5.0 deg (  288 pts, 0.13s): worst_gap=10572.916s at (np.float64(60.0), np.float64(90.0))  ptmean=0.804436
-  grid= 2.5 deg ( 1008 pts, 0.41s): worst_gap=10573.870s at (np.float64(60.0), np.float64(87.5))  ptmean=0.804968
-  grid= 1.0 deg ( 5760 pts, 2.49s): worst_gap=10574.175s at (np.float64(60.0), np.float64(88.0))  ptmean=0.805287
+  grid= 5.0 deg (  288 pts, 0.05s): worst_gap=10572.916s at (np.float64(60.0), np.float64(90.0))  ptmean=0.804436
+  grid= 2.5 deg ( 1008 pts, 0.17s): worst_gap=10573.870s at (np.float64(60.0), np.float64(87.5))  ptmean=0.804968
+  grid= 1.0 deg ( 5760 pts, 0.95s): worst_gap=10574.175s at (np.float64(60.0), np.float64(88.0))  ptmean=0.805287
 
 --- Independent elevation cross-check (ENU vs triangle-geometry) ---
   representative_site (65.0N,40.0E): max |elevation error| = 7.105e-14 deg
   worst_regional_point (60.0N,270.0E): max |elevation error| = 5.713e-12 deg
   band_edge_75N (75.0N,180.0E): max |elevation error| = 4.974e-14 deg
 
-wrote /Users/sanju/Projects/Aerospace Portfolio/Molniya orbit design/results/m5_baseline_regional_metrics.json
-wrote /Users/sanju/Projects/Aerospace Portfolio/Molniya orbit design/results/m5_sensitivity.csv
-wrote /Users/sanju/Projects/Aerospace Portfolio/Molniya orbit design/results/m5_convergence.csv
+wrote results/m5_baseline_regional_metrics.json
+wrote results/m5_sensitivity.csv
+wrote results/m5_convergence.csv
 
 ==============================================================================
 END M5 VERIFICATION REPORT

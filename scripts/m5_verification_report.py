@@ -351,7 +351,7 @@ def main():
 
     with open(RESULTS_DIR / "m5_baseline_regional_metrics.json", "w") as f:
         json.dump(report, f, indent=2, default=float)
-    print(f"\nwrote {RESULTS_DIR / 'm5_baseline_regional_metrics.json'}")
+    print("\nwrote results/m5_baseline_regional_metrics.json")
 
     # sensitivity CSV (combined)
     with open(RESULTS_DIR / "m5_sensitivity.csv", "w", newline="") as f:
@@ -369,7 +369,7 @@ def main():
         for row in perigee_rows:
             w.writerow(["perigee_altitude", "perigee_alt_km", row["perigee_alt_km"],
                         row["regional_mean_access_fraction"], row["worst_max_gap_s"], row["site_access_fraction"]])
-    print(f"wrote {RESULTS_DIR / 'm5_sensitivity.csv'}")
+    print("wrote results/m5_sensitivity.csv")
 
     with open(RESULTS_DIR / "m5_convergence.csv", "w", newline="") as f:
         w = csv.writer(f)
@@ -380,7 +380,7 @@ def main():
         for row in conv_grid_rows:
             w.writerow(["spatial", "grid_step_deg", row["grid_step_deg"], "worst_max_gap_s", row["worst_max_gap_s"]])
             w.writerow(["spatial", "grid_step_deg", row["grid_step_deg"], "point_weighted_mean_access_fraction", row["point_weighted_mean_access_fraction"]])
-    print(f"wrote {RESULTS_DIR / 'm5_convergence.csv'}")
+    print("wrote results/m5_convergence.csv")
 
     print("\n" + "=" * 78)
     print("END M5 VERIFICATION REPORT")
