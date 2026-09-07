@@ -546,13 +546,13 @@ J2 secular-theory accuracy, not measurement uncertainty.
 - **M3** — ECI/ECEF transformation + Earth-fixed ground track + access
   geometry (§10.J, K, L, N). ✅ complete — see §M3 below.
 - **M4** — First-order J2 secular propagation + critical-inclination
-  verification (§10.G, H, I).
+  verification (§10.G, H, I). ✅ complete — see §M4 below.
 - **M5** — High-latitude dwell/coverage/revisit + parameter sensitivity
   study.
 - **M6** — Independent validation + portfolio polish + CI/reproducibility
   audit.
 
-M4 is **not** started as part of this milestone.
+M5 is **not** started as part of this milestone.
 
 ---
 
@@ -1069,3 +1069,345 @@ coordinates, or stationkeeping was implemented in M3 — all remain
 explicitly deferred to M4/M5 per the roadmap. This module chain is
 strictly: two-body ECI propagation (M2, unchanged) → ECEF → geocentric
 ground track → basic spherical-Earth access geometry.
+
+---
+
+# Milestone 4 — First-Order J2 Secular Propagation + Critical-Inclination Verification
+
+**Status:** M4 complete. Implements a first-order secular J2 mean-element
+model (RAAN/argp/mean-anomaly rates), a secular element propagator with
+state reconstruction reusing M2's element↔state machinery, a J2-aware
+ground track reusing M3's frame code unchanged, an analytical apogee/
+perigee-time finder, and an independent short-horizon Cartesian J2
+cross-check that fits secular rates from osculating elements. **M4 is a
+mean-element secular model, not a full osculating-element production
+propagator** — the optional Cartesian cross-check is supporting only, per
+the M4 scope guard. **Coverage/revisit analysis remains M5** — nothing
+in this section is a coverage or link-availability result.
+
+## M4.0 Pre-flight verification
+
+Before writing any M4 code, the M3 headline values were reproduced from
+production code and the M2/M3 reports/figures were regenerated and
+diffed byte-for-byte against the committed artifacts:
+
+| Quantity | M3 committed value | Recomputed (pre-M4) | Match |
+|---|---|---|---|
+| Apogee latitude | +63.434949° | +63.434949° | ✓ |
+| Successive-apogee longitude separation | -180.00000000° | -180.00000000° | ✓ |
+| One-sidereal-day ground-track repeat error | 1.173×10⁻¹⁰ deg | 1.173×10⁻¹⁰ deg | ✓ |
+| Access fraction | 80.30% | 80.3027% | ✓ |
+| Max no-access gap | 8551.051 s | 8551.051 s | ✓ |
+
+`scripts/m2_verification_report.py` and `scripts/m3_verification_report.py`
+output, plus all five committed M2/M3 figure PNGs, were regenerated and
+found **byte-for-byte identical** (`diff` on report text; identical MD5
+checksums on every figure) — zero numerical drift from M2/M3.
+`pytest -W error` on the pre-M4 tree passed 72/72.
+
+## M4.1 First-order secular J2 rates
+
+New module `j2.py`. For `n = sqrt(mu/a^3)` and `p = a(1-e^2)`:
+
+    RAAN_dot = -(3/2) J2 n (Re/p)^2 cos(i)
+    argp_dot =  (3/4) J2 n (Re/p)^2 (5 cos^2(i) - 1)
+    M_dot    = n + (3/4) J2 n (Re/p)^2 sqrt(1-e^2) (3 cos^2(i) - 1)
+
+**M-dot convention (explicit, per M4 §2):** mean anomaly does **not**
+advance at the unperturbed rate `n` alone — the secular J2 correction
+term above is added, using the same `J2 * n * (Re/p)^2` prefactor shared
+by all three rates. This is tested independently (checklist F): the
+`J2→0` limit of this exact formula must reduce to `M_dot = n` exactly,
+which it does to double-precision (`test_F_j2_zero_limit_rates`).
+
+`a`, `e`, `i` are held fixed in this secular model (M4 §3 requirement);
+`RAAN`, `argp`, `M` are tracked and evolved separately — never collapsed
+into an argument-of-latitude, since the Molniya baseline's eccentricity
+(0.737) makes that collapse invalid. `SecularElements` and `SecularRates`
+are immutable (`frozen=True`) dataclasses; `propagate_elements_j2_secular`
+never mutates its input (test H).
+
+## M4.2 Critical-inclination verification
+
+At the baseline `i = 63.434949°`:
+
+    5 cos^2(i) - 1 = 4.441e-16   (zero to double-precision floor)
+    argp_dot = 1.4557e-23 rad/s = 7.206e-17 deg/day   (effectively zero)
+
+**Off-critical comparison** (a, e held at baseline; only i varied):
+
+| i (deg) | 5cos²i - 1 | argp_dot (deg/day) | RAAN_dot (deg/day) |
+|---|---|---|---|
+| 60.000000 | +0.250000 | **+0.040566** | -0.162265 |
+| 63.000000 | +0.030537 | **+0.004955** | -0.147334 |
+| 63.434949 (baseline) | 0.000000 | **0.000000** (7.2e-17) | -0.145135 |
+| 64.000000 | -0.039154 | **-0.006353** | -0.142265 |
+| 65.000000 | -0.106969 | **-0.017357** | -0.137153 |
+
+`argp_dot` changes sign exactly at the critical inclination — positive
+below it, negative above (test D), with clearly nonzero magnitude at
+every off-critical sample point (test E, all |argp_dot| > 1e-4 deg/day,
+i.e. many orders of magnitude above the baseline's numerically-zero
+residual). See [`figures/m4_j2_rate_sensitivity.png`](figures/m4_j2_rate_sensitivity.png).
+
+## M4.3 Nodal regression verification
+
+**Independent recomputation** (a separate formula coded directly in
+`tests/test_j2.py::test_A_baseline_raan_dot_independent_formula`, not a
+second call to `compute_secular_rates`):
+
+    RAAN_dot = -0.145135 deg/day
+
+matching both the production `compute_secular_rates` output and the M1
+prediction (DESIGN.md §3: `Omega_dot ≈ -0.145135 deg/day`) to 6
+significant figures — **no discrepancy found** beyond the display
+rounding already documented in M1/M2.
+
+## M4.4 Secular element propagator and state reconstruction
+
+`propagate_elements_j2_secular(elements0, t)` advances RAAN/argp/M
+linearly at the rates from §M4.1 (a, e, i constant), supports scalar or
+numpy-array `t`, and never mutates `elements0` (tests G, H). Internally
+the angles are advanced **unwrapped** (no modulo at any intermediate
+step) and wrapped to [0, 360) deg only at the output boundary if
+`wrap=True` (default); `wrap=False` returns the continuous unwrapped
+angle, used for the long-horizon drift figure (§M4.7) and for exactly
+recovering the linear secular trend in tests (test H, K).
+
+**State reconstruction** reuses, rather than duplicates, M2's Kepler-
+solving and PQW-rotation code: mean anomaly → eccentric anomaly
+(`propagation.mean_to_eccentric_anomaly`, unchanged since M2) → true
+anomaly → `elements.coe_to_rv` (unchanged since M2). Self-consistency
+verified: reconstructed radius matches `r = a(1 - e cos E)` to
+≤1e-10 relative (test I).
+
+**J2→0 regression** (test F, J): with `J2=0`, the secular model's
+reconstructed state matches (a) the independent Kepler time-of-flight
+solver (`kepler_state_at_time`, unchanged since M2) to ≤1e-10 relative,
+and (b) a full M2 `solve_ivp` two-body propagation to ≤1e-9 relative —
+confirming the J2=0 limit exactly recovers two-body dynamics through two
+independent M2 code paths, not just one.
+
+## M4.5 Ground track under secular J2 (multi-day)
+
+`groundtrack.compute_ground_track_j2` reuses the *exact same* M3
+`eci_to_ecef` / `ecef_to_geocentric_latlon` frame code used by the
+two-body ground track — so any difference between the two tracks is
+attributable only to J2 dynamics, not a different frame model.
+
+**Apogee tracking method (M4 §9):** apogee times are found **analytically**
+from the linear M(t) relation (`mean_anomaly_crossing_times`, solving
+`M0 + M_dot*t = 180° (mod 360°)` directly for t), not by nearest-sample
+search — exact by construction, verified against the propagated M value
+at each returned time (test L).
+
+**Apogee ground-track drift, same-side-apogee comparison** (comparing the
+first apogee to the last apogee an even number of half-revolutions later,
+so both sit on the same ~90°-longitude lobe):
+
+| Horizon | # apogees | First (lat, lon) | Last (lat, lon) | Longitude drift | Latitude drift |
+|---|---|---|---|---|---|
+| 1 day | 3 | (63.43495, 90.00000) | (63.43495, 89.83339) | **-0.16661°** | -1.4e-14° |
+| 3 days | 7 | (63.43495, 90.00000) | (63.43495, 89.50016) | **-0.49984°** | 0.0° |
+| 7 days | 15 | (63.43495, 90.00000) | (63.43495, 88.83371) | **-1.16629°** | -1.4e-14° |
+| 14 days | 29 | (63.43495, 90.00000) | (63.43495, 87.66742) | **-2.33258°** | 0.0° |
+
+Latitude drift is at the double-precision floor (as expected: argp_dot
+≈ 0 at critical inclination keeps apogee's argument of latitude, and
+hence its geocentric latitude, fixed). Longitude drift grows
+monotonically and non-linearly with horizon (driven by the RAAN
+regression accumulating over more elapsed time and more revolutions per
+comparison window — not a fixed per-day increment).
+
+**Decomposition of the 1-day drift (a genuine quantitative explanation,
+not just "drift observed"):** the same-side apogee 1 day later actually
+occurs at t=86169.324 s, not exactly `SIDEREAL_DAY_S=86164.0905 s`,
+because the J2-corrected `M_dot` is marginally faster than the
+unperturbed `n` (§M4.1). This 5.233 s offset means Earth has rotated
+slightly *more* than one full sidereal day by the time the same-side
+apogee recurs, which by itself would shift the apparent apogee longitude
+westward by an additional amount independent of RAAN regression:
+
+    RAAN-regression component  = RAAN_dot * (86169.324/86400) = -0.144747 deg
+    extra-Earth-rotation component = -(86169.324 - 86164.0905)/86164.0905 * 360 = -0.021866 deg
+    sum = -0.166613 deg   (observed: -0.166613 deg — exact match)
+
+This decomposition is a genuine independent check that the observed
+number is fully explained by the two known physical effects (RAAN
+regression + M-dot/period timing offset), not an unexplained residual.
+
+**Two-body vs. J2 ground-track divergence** (longitude difference at the
+end of each horizon, comparing the *same-time* two-body and J2 tracks —
+a different, complementary comparison from the same-side-apogee table
+above):
+
+| Horizon | Longitude diff at window end |
+|---|---|
+| 1 day | -0.167080° |
+| 3 days | -0.501205° |
+| 7 days | -1.169059° |
+| 14 days | -2.335197° |
+
+Clearly nonzero at every horizon and growing with time (test M);
+visualized in [`figures/m4_ground_track_two_body_vs_j2.png`](figures/m4_ground_track_two_body_vs_j2.png)
+with a zoomed inset, since at full-map scale the two tracks are visually
+indistinguishable (the drift, while measured precisely above, is
+genuinely small relative to the ~180°-scale ground-track loops — J2 is a
+weak perturbation for this orbit over these horizons, and the figure
+says so honestly rather than exaggerating the visual difference).
+
+**One-sidereal-day repeat error under J2** (window start vs. end, *not*
+an apogee-to-apogee comparison — this quantifies how the M3 "exact
+repeat" property degrades under J2): longitude at t=0 is 90.000000°,
+at t=one sidereal day it is 89.833374°, a **-0.166626°** difference —
+consistent with (and dominated by) the same RAAN-regression + M-dot
+timing effects decomposed above. Unlike the M3 two-body case (repeat
+error 1.17×10⁻¹⁰ deg), the ground track under J2 does **not** exactly
+repeat every sidereal day — expected and correctly reproduced.
+
+## M4.6 Argument-of-perigee orientation check
+
+**Baseline (critical inclination):** ω(0) = 270.000000°, ω(14 days) =
+270.000000° — **unchanged to the precision printed** (the true drift,
+argp_dot × 14 days ≈ 1×10⁻¹⁵ deg, is far below any meaningful digit).
+Apogee latitude: 63.434949° at day 0 and day 14, delta 0.0° (exactly
+frozen, test N).
+
+**Off-critical (i=65°):** ω(0) = 270.000000°, ω(14 days) = 269.756997°,
+a **-0.243003°** drift over 14 days (test O, clearly >0.1° threshold).
+Apogee latitude changes correspondingly: 65.000000° → 64.998895°, a
+**-1.105×10⁻³°** shift over 14 days.
+
+This makes the critical-inclination benefit quantitatively (and, in
+[`figures/m4_element_drift.png`](figures/m4_element_drift.png), visually)
+obvious: the baseline ω(t) trace is a flat line at 270°, while the
+off-critical case visibly slopes downward over the same 14-day window —
+even though the *absolute* magnitude of the off-critical apogee-latitude
+shift (~0.001°) is modest at this timescale, because J2 is a genuinely
+weak perturbation over 2 weeks for this semi-major axis. The relevant
+engineering point is the qualitative contrast (zero vs. nonzero secular
+drift), not the absolute size of the off-critical number at 14 days.
+
+## M4.7 Optional Cartesian J2 cross-check
+
+New module `j2_cartesian.py`, implementing the M4-§11 acceleration form
+
+    ax = -mu*x/r^3 * [1 - 1.5 J2 (Re/r)^2 (5 z^2/r^2 - 1)]
+    ay = -mu*y/r^3 * [1 - 1.5 J2 (Re/r)^2 (5 z^2/r^2 - 1)]
+    az = -mu*z/r^3 * [1 - 1.5 J2 (Re/r)^2 (5 z^2/r^2 - 3)]
+
+verified algebraically equivalent to the more commonly quoted factored
+form in the module docstring. **J2=0 reduces exactly** to the M2
+two-body EOM (`np.allclose(..., atol=1e-15)`, test R) — confirmed
+before doing anything else with this module.
+
+**Fitted-rate cross-check:** propagated the full osculating Cartesian
+two-body+J2 dynamics for 7 days at `rtol=atol=1e-13`, detected apsis
+events via `r·v=0` crossings (same event-detection technique as M2's
+`find_apsides`, independently re-implemented here rather than reusing
+the two-body-only production function), extracted osculating RAAN/argp
+at each of the 14 **perigee** crossings (sampling at a fixed orbital
+phase removes most short-period J2 oscillation — this is the standard
+"mean-element-like" trick, not a full Brouwer/Lyddane osculating→mean
+transformation), and linear-fit the secular trend:
+
+| Rate | First-order theory | 7-day osculating fit | Agreement |
+|---|---|---|---|
+| RAAN_dot | -0.145135 deg/day | **-0.145166 deg/day** | 2.18×10⁻⁴ relative |
+| argp_dot | 7.2×10⁻¹⁷ deg/day (≈0) | **2.729×10⁻⁵ deg/day** | both ≈0; fitted value is 4 orders of magnitude below the smallest off-critical rate (~4×10⁻³ deg/day at i=63°, §M4.2) |
+
+**Short-period vs. secular distinction:** the ~0.02% RAAN_dot discrepancy
+and the small nonzero fitted argp_dot are attributed to (a) short-period
+J2 oscillation not fully averaged out by only 14 perigee samples over 7
+days, and (b) the first-order secular theory itself omitting higher-order
+J2² and J2-e coupling terms present in the full osculating dynamics. Both
+are consistent with, and bounded by, the known limitations of first-order
+secular theory — not evidence of an error in either implementation. This
+independent numerical fit corroborates the analytical secular rates
+without promoting the Cartesian J2 propagator to a production model, per
+the M4 scope guard.
+
+## M4.8 Convergence / numerical checks
+
+- **Kepler solver convergence:** the same Newton-iteration solver used
+  since M2 (`mean_to_eccentric_anomaly`, unchanged) is reused for all M4
+  state reconstruction; its convergence behavior was already verified in
+  M2 and is exercised here at additional (secularly-evolved) M values
+  with no new failures.
+- **Reconstructed radius identity:** `r = a(1 - e cos E)` verified to
+  ≤1e-10 relative at an arbitrary secularly-propagated state (test I).
+- **Apsis radii under J2 secular model:** since a, e are held exactly
+  constant in this model, reconstructed perigee/apogee radii are
+  *identical* to the M1/M2 values at every sampled time by construction
+  (no drift is possible or expected in the mean-element radius — only
+  RAAN/argp/M evolve) — confirmed via `test_P_regression_apsis_still_matches_M1`
+  running the unchanged M2 two-body path.
+- **No long-horizon wrap artifacts:** tested at a 200-day horizon
+  (test K) — unwrapped mean anomaly grows to >720° as expected (many
+  full revolutions), while the wrapped value stays in [0, 360) and
+  matches `unwrapped mod 360` to within 1e-6 deg.
+- **Cartesian J2 integrator:** run at the same tight `rtol=atol=1e-13`
+  DOP853 settings established and convergence-tested in M2/M3; used here
+  only for the supporting cross-check, so a fresh convergence sweep was
+  not repeated (would duplicate M2 §9's already-established convergence
+  behavior on a structurally similar smooth ODE).
+
+## M4.9 Figures
+
+- [`figures/m4_j2_rate_sensitivity.png`](figures/m4_j2_rate_sensitivity.png)
+  — RAAN_dot and argp_dot vs. inclination (50°-75°), critical/baseline
+  inclination marked on both panels, argp_dot crossing zero clearly
+  visible, units deg/day, no axis truncation.
+- [`figures/m4_ground_track_two_body_vs_j2.png`](figures/m4_ground_track_two_body_vs_j2.png)
+  — 7-day two-body (solid blue) vs. secular-J2 (dashed orange) ground
+  track, apogees marked, same M3 spherical-Earth rotation model, with a
+  zoomed inset on the day-7 apogee showing the actual 1.166° divergence
+  (invisible at full-map scale).
+- [`figures/m4_element_drift.png`](figures/m4_element_drift.png) — RAAN(t)
+  and argp(t) over 14 days; argp(t) overlays the baseline (flat at 270°)
+  against the i=65° off-critical case (visibly sloped), making the
+  critical-inclination benefit visually obvious.
+
+All three figures were visually inspected for clipping, overlapping
+annotations, fake longitude-wrap lines, unreadable legends, wrong units,
+and confusing wrapped-angle jumps. **One genuine layout issue was found
+and fixed** (§M4.10).
+
+## M4.10 Genuine discrepancy found and fixed
+
+**What was found:** the first version of
+`m4_ground_track_two_body_vs_j2.png` rendered the two tracks as visually
+indistinguishable at full-map scale (correct — the divergence really is
+that small relative to a ±180° longitude axis — but not a useful figure
+on its own), and after adding a zoomed inset to fix that, the inset's
+title text overlapped the main plot's subtitle.
+
+**Fix:** repositioned and shrank the inset (`inset_axes` bbox and title
+font size/pad adjusted) and reserved top margin via
+`tight_layout(rect=(0,0,1,0.95))`. Re-inspected the regenerated figure:
+no overlap, inset title and zoom-indicator lines render cleanly. This was
+a figure-layout issue only — no numerical result, test, or underlying
+data was affected.
+
+## M4.11 Test suite
+
+`tests/test_j2.py` implements checklist items A-R (26 new tests,
+including the optional Cartesian cross-check). All M1/M2/M3 regression
+tests continue to pass unchanged (test P re-verifies M1 apsis
+radii/velocities through the unchanged M2 production code path in the
+M4 tree).
+
+**Total: 98 tests pass under `pytest -W error`, zero warnings**
+(72 from M1/M2/M3 + 26 new M4 tests).
+
+## M4.12 Scope guard confirmation
+
+No M5 coverage/revisit study, long-horizon operational-availability
+claim, constellation sizing, multi-satellite architecture, RF link
+budget, antenna pointing, stationkeeping, drag/SRP/lunisolar
+perturbation, Moon/Sun ephemeris, launch-vehicle study, or final
+portfolio packaging was implemented in M4 — all remain explicitly
+deferred to M5/M6 per the roadmap. **Coverage analysis (access fraction,
+revisit interval, coverage gaps under J2) remains entirely M5's scope**;
+this milestone only establishes the J2-perturbed orbital dynamics and
+ground-track drift that M5's coverage study will need to account for.

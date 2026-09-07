@@ -1,0 +1,53 @@
+==============================================================================
+M4 VERIFICATION REPORT
+==============================================================================
+
+Baseline secular rates (i=63.434949 deg):
+  n        = 1.4584231716e-04 rad/s
+  RAAN_dot = -2.9318005149e-08 rad/s = -0.145135 deg/day
+  argp_dot = 1.4556589817e-23 rad/s = 7.206029e-17 deg/day
+  M_dot    = 1.4583345935e-04 rad/s = 721.927446 deg/day
+  M1 target RAAN_dot = -0.145135 deg/day
+  5cos^2(i)-1 = 4.441e-16
+
+Off-critical inclination comparison:
+  i=   60.000000 deg  5cos2i-1= 0.250000  argp_dot= 0.040566 deg/day  RAAN_dot=-0.162265 deg/day
+  i=   63.000000 deg  5cos2i-1= 0.030537  argp_dot= 0.004955 deg/day  RAAN_dot=-0.147334 deg/day
+  i=   63.434949 deg  5cos2i-1= 0.000000  argp_dot= 0.000000 deg/day  RAAN_dot=-0.145135 deg/day
+  i=   64.000000 deg  5cos2i-1=-0.039154  argp_dot=-0.006353 deg/day  RAAN_dot=-0.142265 deg/day
+  i=   65.000000 deg  5cos2i-1=-0.106969  argp_dot=-0.017357 deg/day  RAAN_dot=-0.137153 deg/day
+
+Apogee ground-track drift under secular J2 (same-side apogee comparison):
+   1d: n_apogees=  3  first=(lat=63.43495, lon=90.00000)  last=(lat=63.43495, lon=89.83339)  lon_drift=-0.16661 deg  lat_drift=-1.421e-14 deg
+   3d: n_apogees=  7  first=(lat=63.43495, lon=90.00000)  last=(lat=63.43495, lon=89.50016)  lon_drift=-0.49984 deg  lat_drift=0.000e+00 deg
+   7d: n_apogees= 15  first=(lat=63.43495, lon=90.00000)  last=(lat=63.43495, lon=88.83371)  lon_drift=-1.16629 deg  lat_drift=-1.421e-14 deg
+  14d: n_apogees= 29  first=(lat=63.43495, lon=90.00000)  last=(lat=63.43495, lon=87.66742)  lon_drift=-2.33258 deg  lat_drift=0.000e+00 deg
+
+1-day apogee-drift decomposition (dt=86169.324 s to same-side apogee):
+  RAAN-regression component = -0.144747 deg
+  extra-Earth-rotation component (dt != exactly 1 sidereal day) = -0.021866 deg
+  sum = -0.166613 deg  (observed = -0.166613 deg)
+
+One-sidereal-day repeat error under J2 (start vs end of window, NOT an apogee-to-apogee comparison):
+  lon(t=0) = 90.000000 deg, lon(t=sidereal_day) = 89.833374 deg, diff = -0.166626 deg
+
+Argument-of-perigee stability over 14 days:
+  baseline (critical): omega(0)=270.000000 deg, omega(14d)=270.000000 deg, delta=0.000000 deg | apogee_lat(0)=63.434949 deg, apogee_lat(14d)=63.434949 deg, delta=0.000000e+00 deg
+  off-critical i=65: omega(0)=270.000000 deg, omega(14d)=269.756997 deg, delta=-0.243003 deg | apogee_lat(0)=65.000000 deg, apogee_lat(14d)=64.998895 deg, delta=-1.105068e-03 deg
+
+Two-body vs J2 ground-track divergence:
+   1d: longitude diff at window end = -0.167080 deg
+   3d: longitude diff at window end = -0.501205 deg
+   7d: longitude diff at window end = -1.169059 deg
+  14d: longitude diff at window end = -2.335197 deg
+
+Cartesian J2 cross-check (osculating propagation, 7 days, perigee-sampled fit):
+  14 perigee samples over 7 days
+  fitted RAAN_dot = -0.145166 deg/day  (theory -0.145135 deg/day, rel err 2.179e-04)
+  fitted argp_dot = 2.729036e-05 deg/day  (theory 7.206e-17 deg/day)
+
+  J2=0 Cartesian EOM matches two-body EOM exactly: True
+
+==============================================================================
+END M4 VERIFICATION REPORT
+==============================================================================

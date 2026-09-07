@@ -8,15 +8,18 @@ verified milestone by milestone.
 
 ## Status
 
-**Milestones 1–3 of 6 — complete.** M1 is the analytical design and
+**Milestones 1–4 of 6 — complete.** M1 is the analytical design and
 derivation; M2 implements and numerically verifies classical-element ↔
 Cartesian-state conversion and two-body propagation; M3 adds the
 ECI→ECEF transform, the Earth-fixed two-body ground track, and basic
-spherical-Earth topocentric access geometry (range/azimuth/elevation,
-access intervals, one-day access metrics), each independently
-cross-checked. **No J2, no secular drift, no coverage optimization, no
-link budget** yet. See [`DESIGN.md`](DESIGN.md) for the full derivation,
-baseline element set, and M2/M3 numerical results.
+spherical-Earth topocentric access geometry; M4 adds a first-order
+secular J2 mean-element model, verifies the critical-inclination result
+numerically, and quantifies J2-driven ground-track drift over 1–14 days.
+**No coverage/revisit study, no constellation design, no link budget**
+yet — and **M3's access-geometry numbers (80.30% access fraction etc.)
+were computed with the two-body-only model; they do not yet include J2
+drift**, which M5 will need to account for. See [`DESIGN.md`](DESIGN.md)
+for the full derivation and M2/M3/M4 numerical results.
 
 ## Milestone roadmap
 
@@ -25,9 +28,34 @@ baseline element set, and M2/M3 numerical results.
 | M1 | Analytical design + verification plan | ✅ complete |
 | M2 | Element/state conversion + two-body propagation + apsis/period verification | ✅ complete |
 | M3 | ECI/ECEF transformation + Earth-fixed ground track + access geometry | ✅ complete |
-| M4 | First-order J2 secular propagation + critical-inclination verification | not started |
+| M4 | First-order J2 secular propagation + critical-inclination verification | ✅ complete |
 | M5 | High-latitude dwell/coverage/revisit + parameter sensitivity | not started |
 | M6 | Independent validation + portfolio polish + CI/reproducibility audit | not started |
+
+## M4 verification highlights
+
+- Baseline critical inclination (63.434949°): `argp_dot` = 7.2×10⁻¹⁷
+  deg/day (zero to double-precision floor); `RAAN_dot` = **-0.145135
+  deg/day**, matching the M1 prediction and an independently coded
+  cross-check formula
+- `argp_dot` sign flips exactly at critical inclination: +0.0406 deg/day
+  at i=60°, **0** at i=63.4349°, -0.0174 deg/day at i=65° — see
+  [`figures/m4_j2_rate_sensitivity.png`](figures/m4_j2_rate_sensitivity.png)
+- ω(t) stays exactly at 270.000000° over 14 days at the baseline
+  inclination, vs. a measurable -0.243° drift at an off-critical i=65°
+  case — see [`figures/m4_element_drift.png`](figures/m4_element_drift.png)
+- Two-body vs. J2 ground-track divergence grows from -0.167° (1 day) to
+  -2.335° (14 days), fully explained by a RAAN-regression + M-dot-timing
+  decomposition — see
+  [`figures/m4_ground_track_two_body_vs_j2.png`](figures/m4_ground_track_two_body_vs_j2.png)
+- Independent Cartesian J2 propagation (osculating, 7 days, perigee-
+  sampled fit) confirms the secular RAAN_dot to 0.022% relative error
+- J2=0 limit reproduces the M2 two-body dynamics exactly, through two
+  independent code paths
+
+Full numbers, the RAAN/M-dot drift decomposition, and one documented
+figure-layout fix are in
+[`DESIGN.md` — Milestone 4](DESIGN.md#milestone-4--first-order-j2-secular-propagation--critical-inclination-verification).
 
 ## M3 verification highlights
 
@@ -90,11 +118,14 @@ verification plan: [`DESIGN.md`](DESIGN.md).
 ```
 DESIGN.md              analytical design & verification plan
 src/molniya_design/    Python package (constants, elements, twobody,
-                        propagation, frames, groundtrack, access)
-tests/                 pytest suite (72 tests: M1 + M2 + M3)
+                        propagation, frames, groundtrack, access,
+                        j2, j2_cartesian)
+tests/                 pytest suite (98 tests: M1 + M2 + M3 + M4)
 scripts/               verification-report / figure-generation scripts
 figures/               generated figures (M2 orbit/conservation; M3
-                        ground track / access / range-vs-elevation)
+                        ground track / access / range-vs-elevation;
+                        M4 J2 rate sensitivity / ground-track comparison
+                        / element drift)
 results/               generated numeric verification reports
 ```
 

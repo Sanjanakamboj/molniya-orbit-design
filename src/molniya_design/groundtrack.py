@@ -1,9 +1,14 @@
-"""Two-body ECI propagation -> ECEF -> geocentric ground track.
+"""Two-body ECI propagation -> ECEF -> geocentric ground track, plus an
+M4 first-order-secular-J2 ground track built from the same frame code.
 
-No J2. This module only chains together M2's two-body propagator
+The two-body path (unchanged since M3) chains M2's two-body propagator
 (:mod:`molniya_design.propagation`) with M3's frame transformation
 (:mod:`molniya_design.frames`) and the M2 apsis detector — it adds no new
-dynamics.
+dynamics. The J2 path (new in M4) chains :mod:`molniya_design.j2`'s
+secular mean-element propagator + state reconstruction with the *same*
+M3 frame transformation code, so any difference between the two ground
+tracks is attributable only to the J2 secular dynamics, not to a
+different Earth-rotation/frame model.
 """
 
 from __future__ import annotations
@@ -12,8 +17,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .constants import MU_EARTH
+from .constants import J2_EARTH, MU_EARTH, R_EARTH
 from .frames import ecef_to_geocentric_latlon, eci_to_ecef
+from .j2 import SecularElements, mean_anomaly_crossing_times, propagate_elements_j2_secular, reconstruct_eci_state
 from .propagation import Apsis, find_apsides, propagate
 
 
@@ -89,3 +95,84 @@ def longitude_separation_deg(lon1_deg: float, lon2_deg: float) -> float:
     if d == -180.0:
         d = 180.0
     return d
+
+
+# ---------------------------------------------------------------------------
+# M4: first-order secular J2 ground track (same frame/rotation model as M3)
+# ---------------------------------------------------------------------------
+
+
+def compute_ground_track_j2(
+    elements0: SecularElements,
+    t_span: tuple[float, float],
+    dt_s: float,
+    mu: float = MU_EARTH,
+    J2: float = J2_EARTH,
+    Re: float = R_EARTH,
+    theta_g0_rad: float = 0.0,
+) -> GroundTrack:
+    """Secular-J2 mean-element ground track: propagate mean elements
+    (:func:`molniya_design.j2.propagate_elements_j2_secular`), reconstruct
+    ECI state at each sample (:func:`molniya_design.j2.reconstruct_eci_state`),
+    then reuse the *same* M3 ECI->ECEF->lat/lon chain used by
+    :func:`compute_ground_track`."""
+    n = int(round((t_span[1] - t_span[0]) / dt_s)) + 1
+    t_eval = np.linspace(t_span[0], t_span[1], n)
+
+    r_eci = np.zeros((3, n))
+    r_ecef = np.zeros((3, n))
+    lat = np.zeros(n)
+    lon = np.zeros(n)
+
+    for k, t in enumerate(t_eval):
+        elements_t = propagate_elements_j2_secular(elements0, t, J2=J2, Re=Re, mu=mu)
+        r, v = reconstruct_eci_state(elements_t, mu=mu)
+        r_eci[:, k] = r
+        r_ecef[:, k] = eci_to_ecef(r, t, theta_g0_rad)
+        lat[k], lon[k] = ecef_to_geocentric_latlon(r_ecef[:, k])
+
+    return GroundTrack(t_s=t_eval, r_eci=r_eci, r_ecef=r_ecef, lat_deg=lat, lon_deg=lon)
+
+
+def apogee_ground_points_j2(
+    elements0: SecularElements,
+    t_span: tuple[float, float],
+    mu: float = MU_EARTH,
+    J2: float = J2_EARTH,
+    Re: float = R_EARTH,
+    theta_g0_rad: float = 0.0,
+) -> list[ApsisGroundPoint]:
+    """Apogee (M=180 deg) ground points under secular J2, using the exact
+    analytical crossing times from
+    :func:`molniya_design.j2.mean_anomaly_crossing_times` (M4 §9's
+    preferred robust method — not nearest-sample search)."""
+    times = mean_anomaly_crossing_times(elements0, 180.0, t_span, J2=J2, Re=Re, mu=mu)
+    points = []
+    for t in times:
+        elements_t = propagate_elements_j2_secular(elements0, t, J2=J2, Re=Re, mu=mu)
+        r, v = reconstruct_eci_state(elements_t, mu=mu)
+        r_ecef = eci_to_ecef(r, t, theta_g0_rad)
+        lat, lon = ecef_to_geocentric_latlon(r_ecef)
+        points.append(ApsisGroundPoint(t_s=t, kind="apogee", lat_deg=lat, lon_deg=lon, r_km=np.linalg.norm(r)))
+    return points
+
+
+def perigee_ground_points_j2(
+    elements0: SecularElements,
+    t_span: tuple[float, float],
+    mu: float = MU_EARTH,
+    J2: float = J2_EARTH,
+    Re: float = R_EARTH,
+    theta_g0_rad: float = 0.0,
+) -> list[ApsisGroundPoint]:
+    """Perigee (M=0 deg) ground points under secular J2 (see
+    :func:`apogee_ground_points_j2`)."""
+    times = mean_anomaly_crossing_times(elements0, 0.0, t_span, J2=J2, Re=Re, mu=mu)
+    points = []
+    for t in times:
+        elements_t = propagate_elements_j2_secular(elements0, t, J2=J2, Re=Re, mu=mu)
+        r, v = reconstruct_eci_state(elements_t, mu=mu)
+        r_ecef = eci_to_ecef(r, t, theta_g0_rad)
+        lat, lon = ecef_to_geocentric_latlon(r_ecef)
+        points.append(ApsisGroundPoint(t_s=t, kind="perigee", lat_deg=lat, lon_deg=lon, r_km=np.linalg.norm(r)))
+    return points
